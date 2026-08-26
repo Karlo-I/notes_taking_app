@@ -14,7 +14,6 @@ rather than something to remember not to do.
 
 import os
 from contextlib import contextmanager
-
 from psycopg2 import pool as pg_pool
 
 _pool = pg_pool.SimpleConnectionPool(1, 10, dsn=os.environ["DATABASE_URL"])

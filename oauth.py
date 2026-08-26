@@ -12,11 +12,9 @@ defines what "log in" means at the database level.
 """
 
 import os
-
 from authlib.integrations.flask_client import OAuth
-from flask import Blueprint, abort, redirect, session, url_for
-
 from db import get_unscoped_connection
+from flask import Blueprint, abort, redirect, session, url_for
 
 oauth_bp = Blueprint("oauth", __name__)
 oauth = OAuth()

@@ -4,9 +4,8 @@ and later the critic/output routes too. Keeps the session[\"user_id\"] check
 in one place rather than repeated at the top of every view function.
 """
 
-from functools import wraps
-
 from flask import redirect, session, url_for
+from functools import wraps
 
 
 def require_login(view):

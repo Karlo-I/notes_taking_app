@@ -12,7 +12,6 @@ notes once notes routes exist.
 """
 
 from flask import Blueprint, redirect, request, session, url_for
-
 from oauth import upsert_user
 
 dev_auth_bp = Blueprint("dev_auth", __name__)

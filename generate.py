@@ -9,10 +9,8 @@ Model choice is configurable via .env (OUTPUT_MODEL) so you can swap
 between Haiku and Sonnet/Opus without touching code.
 """
 
-import os
-
 import anthropic
-
+import os
 from db import get_user_scoped_connection
 from retrieval import find_relevant_notes
 

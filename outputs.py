@@ -9,11 +9,11 @@ isolation automatically -- no WHERE user_id = ... anywhere in this file.
 import html
 import json
 import os
-from io import BytesIO
-from flask import Blueprint, abort, redirect, request, send_file, session, url_for
-from decorators import require_login
 from db import get_user_scoped_connection
+from decorators import require_login
+from flask import Blueprint, abort, redirect, request, send_file, session, url_for
 from generate import generate_output, SYSTEM_PROMPTS
+from io import BytesIO
 
 outputs_bp = Blueprint("outputs", __name__, url_prefix="/outputs")
 

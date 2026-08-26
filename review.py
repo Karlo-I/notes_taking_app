@@ -9,12 +9,11 @@ critic (a slow network request), then open a new connection to write the
 result. Never hold a pooled connection open while waiting on Anthropic.
 """
 
-from flask import Blueprint, abort, redirect, request, session, url_for
-
 from critic import get_critic_reply
 from db import get_user_scoped_connection, vector_literal
 from decorators import require_login
 from embeddings import get_embedding
+from flask import Blueprint, abort, redirect, request, session, url_for
 from integration import decide as integration_decide
 
 review_bp = Blueprint("review", __name__, url_prefix="/notes")

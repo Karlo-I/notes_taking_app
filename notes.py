@@ -11,11 +11,10 @@ file -- that's not an oversight, it's the point. The database enforces it,
 so the application code can't forget to.
 """
 
-from flask import Blueprint, abort, redirect, request, session, url_for
-
 from classify import classify_note
-from decorators import require_login
 from db import get_user_scoped_connection
+from decorators import require_login
+from flask import Blueprint, abort, redirect, request, session, url_for
 from review import begin_critique_session, embed_and_store, run_integration
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/notes")
