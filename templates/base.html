@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Notes App{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <h2>My Knowledge Base</h2>
+        <a href="/notes" {% if request.path.startswith('/notes') %}class="active"{% endif %}>📝 Notes</a>
+        <a href="/outputs" {% if request.path.startswith('/outputs') %}class="active"{% endif %}>✨ Outputs</a>
+        <a href="/notes/search">🔍 Search</a>
+        
+        {% if session.get('user_id') %}
+            <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                <a href="/logout" style="color: var(--danger);">Log out</a>
+            </div>
+        {% endif %}
+    </aside>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global Modal Container -->
+    <div id="global-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" style="margin:0; font-size: 16px; font-weight: 600;">Details</h3>
+                <button class="close-btn" onclick="closeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-footer" id="modal-footer"></div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(title, bodyHtml, footerHtml) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerHTML = bodyHtml;
+            document.getElementById('modal-footer').innerHTML = footerHtml;
+            document.getElementById('global-modal').classList.add('active');
+        }
+        function closeModal() {
+            document.getElementById('global-modal').classList.remove('active');
+        }
+        document.getElementById('global-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        async function loadNoteDetails(id) {
+            try {
+                const res = await fetch(`/notes/${id}?format=json`);
+                if (!res.ok) throw new Error("Server returned " + res.status);
+                const data = await res.json();
+                
+                const body = '<div style="white-space: pre-wrap; font-size: 15px; line-height: 1.6;">' + data.content + '</div>';
+                
+                let footer = '';
+                
+                // 1. Delete Button (Left aligned)
+                footer += `
+                    <form method="post" action="/notes/${data.id}/delete" style="margin-right: auto;">
+                        <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
+                    </form>
+                `;
+
+                // 2. Action Buttons (Right aligned)
+                if (data.status === 'under_review') {
+                    footer += `<a href="/notes/${data.id}/review" class="btn">Continue Review</a>`;
+                }
+
+                openModal(`[${data.type.toUpperCase()}] ${data.status.replace('_', ' ')}`, body, footer);
+            } catch (error) {
+                alert("ERROR: " + error.message);
+            }
+        }
+
+        async function loadOutputDetails(id) {
+            try {
+                const res = await fetch(`/outputs/${id}?format=json`);
+                if (!res.ok) throw new Error("Server returned " + res.status);
+                const data = await res.json();
+                
+                const body = '<div style="white-space: pre-wrap; font-family: serif; line-height: 1.6;">' + data.content + '</div>';
+                
+                let footer = '';
+
+                // 1. Delete Button (Left aligned)
+                footer += `
+                    <form method="post" action="/outputs/${data.id}/delete" style="margin-right: auto;">
+                        <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
+                    </form>
+                `;
+
+                // 2. Regenerate Button (Right aligned)
+                footer += `
+                    <form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;">
+                        <button type="submit" class="btn btn-secondary">Regenerate</button>
+                    </form>
+                `;
+
+                openModal(`${data.type.toUpperCase()} • ${data.topic || 'Untitled'}`, body, footer);
+            } catch (error) {
+                alert("ERROR: " + error.message);
+            }
+        }
+    </script>
+
+</body>
+</html>

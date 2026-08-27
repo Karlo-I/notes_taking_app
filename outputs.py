@@ -11,7 +11,7 @@ import json
 import os
 from db import get_user_scoped_connection
 from decorators import require_login
-from flask import Blueprint, abort, redirect, request, send_file, session, url_for
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, send_file, session, url_for
 from generate import generate_output, SYSTEM_PROMPTS
 from io import BytesIO
 
@@ -24,26 +24,12 @@ def index():
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, output_type, topic_query, created_at "
+                "SELECT id, output_type, topic_query, model_used, created_at "
                 "FROM outputs ORDER BY created_at DESC"
             )
-            rows = cur.fetchall()
+            outputs = cur.fetchall()
 
-    def _row(r):
-        oid, otype, topic, created = r[0], r[1], r[2], r[3]
-        return (
-            f'<li><a href="/outputs/{oid}">[{otype}] {topic[:70]}</a> '
-            f'-- {created.strftime("%Y-%m-%d %H:%M")}</li>'
-        )
-
-    items = "".join(_row(r) for r in rows) if rows else "<li>No outputs yet.</li>"
-
-    return f"""
-        <p><a href="/">&larr; home</a></p>
-        <h2>Your outputs</h2>
-        <a href="/outputs/new">+ New output</a>
-        <ul>{items}</ul>
-    """
+    return render_template("outputs/index.html", outputs=outputs)
 
 
 @outputs_bp.route("/new", methods=["GET", "POST"])
@@ -108,54 +94,24 @@ def view(output_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, output_type, topic_query, generated_content, pdf_path, created_at "
+                "SELECT id, output_type, topic_query, generated_content, created_at "
                 "FROM outputs WHERE id = %s",
-                (str(output_id),),
+                (str(output_id),)
             )
             output = cur.fetchone()
-            if output is None:
-                abort(404)
-
-    oid, otype, topic, content, pdf_path, created = output
-
-    pdf_link = f'<p><a href="/outputs/{oid}/pdf">Download PDF</a></p>'
-
-    # Escape HTML in generated content for safe display
-    escaped_content = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-
-    return f"""
-        <p><a href="/outputs">&larr; back</a></p>
-        <p>Type: {otype} | Created: {created.strftime("%Y-%m-%d %H:%M")}</p>
-        <h3>Topic: {topic}</h3>
-        {pdf_link}
-        <div style="white-space:pre-wrap; font-family:serif; line-height:1.6; max-width:700px;">
-            {escaped_content}
-        </div>
-        <br>
-        <div style="margin-top: 24px; display: flex; gap: 12px;">
-            <form method="post" action="/outputs/{oid}/regenerate" style="display:inline;">
-                <button type="submit">↻ Regenerate</button>
-            </form>
-            <button type="button" id="copy-btn-{oid}" onclick="copyToClipboard('{oid}')">
-                Copy to Clipboard
-            </button>
-            <form method="post" action="/outputs/{oid}/delete" style="display:inline; margin-left:auto;">
-                <button type="submit" style="color:red;">Delete</button>
-            </form>
-        </div>
-        <script>
-        function copyToClipboard(outputId) {{
-            const content = {json.dumps(content)};
-            navigator.clipboard.writeText(content).then(() => {{
-                const btn = document.getElementById('copy-btn-' + outputId);
-                btn.textContent = 'Copied!';
-                setTimeout(() => {{
-                    btn.textContent = 'Copy to Clipboard';
-                }}, 1500);
-            }});
-        }}
-        </script>
-            """
+            
+    if not output:
+        abort(404)
+        
+    # This route now ONLY returns JSON for the modal
+    return jsonify({
+        "id": str(output[0]), 
+        "type": output[1], 
+        "topic": output[2],
+        "content": output[3], 
+        "created_at": output[4].strftime('%Y-%m-%d %H:%M') if output[4] else '',
+        "model": "Haiku" 
+    })
 
 
 @outputs_bp.route("/<uuid:output_id>/regenerate", methods=["POST"])
@@ -177,7 +133,7 @@ def regenerate(output_id):
     try:
         result = generate_output(session["user_id"], topic_query, output_type)
     except ValueError as e:
-        return redirect(url_for("outputs.view", output_id=output_id))
+        return redirect(url_for("outputs.index"))  # Changed this line too
 
     # Update the existing row instead of creating a new one
     with get_user_scoped_connection(session["user_id"]) as conn:
@@ -207,7 +163,7 @@ def regenerate(output_id):
                     (str(output_id), n["id"]),
                 )
 
-    return redirect(url_for("outputs.view", output_id=output_id))
+    return redirect(url_for("outputs.index"))
 
 
 @outputs_bp.route("/<uuid:output_id>/pdf")

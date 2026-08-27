@@ -14,7 +14,7 @@ so the application code can't forget to.
 from classify import classify_note
 from db import get_user_scoped_connection
 from decorators import require_login
-from flask import Blueprint, abort, redirect, request, session, url_for
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
 from review import begin_critique_session, embed_and_store, run_integration
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/notes")
@@ -31,20 +31,8 @@ def index():
             )
             notes = cur.fetchall()
 
-    def _note_link(n):
-        note_id, note_type, content, status = n[0], n[1], n[2], n[3]
-        # under_review has nothing to offer on the detail page except a link
-        # forward -- send straight to the live conversation instead.
-        href = f"/notes/{note_id}/review" if status == "under_review" else f"/notes/{note_id}"
-        return f'<li><a href="{href}">[{note_type}] {content[:60]} -- {status}</a></li>'
-
-    rows = "".join(_note_link(n) for n in notes)
-    return f"""
-        <p><a href="/">&larr; home</a></p>
-        <h2>Your notes</h2>
-        <a href="/notes/new">+ New note</a>
-        <ul>{rows}</ul>
-    """
+    # Pass the raw data to the template. Jinja2 will handle the HTML.
+    return render_template("notes/index.html", notes=notes)
 
 
 @notes_bp.route("/new", methods=["GET", "POST"])
@@ -114,61 +102,22 @@ def view(note_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, note_type, content, status, created_at, merged_into "
-                "FROM notes WHERE id = %s",
-                (str(note_id),),
+                "SELECT id, note_type, content, status, created_at FROM notes WHERE id = %s",
+                (str(note_id),)
             )
             note = cur.fetchone()
-            if note is None:
-                abort(404)
-
-            # note_links is stored directionally (note_id -> related_note_id)
-            # but a link reads both ways -- this note could be either side of
-            # the row depending on which one the integration agent treated
-            # as the "new" note at the time.
-            cur.execute(
-                """
-                SELECT id, content FROM notes
-                WHERE id IN (
-                    SELECT related_note_id FROM note_links WHERE note_id = %s
-                    UNION
-                    SELECT note_id FROM note_links WHERE related_note_id = %s
-                )
-                """,
-                (str(note_id), str(note_id)),
-            )
-            related = cur.fetchall()
-
-    # If this note belongs to a different user, RLS makes it invisible to
-    # this connection -- the query above returns nothing, indistinguishable
-    # from a note that doesn't exist at all. No extra ownership check needed.
-
-    # under_review is kept as a fallback for direct URL navigation (e.g. an
-    # old link or bookmark) even though index() no longer routes here for
-    # it. draft is not handled here at all anymore -- nothing produces that
-    # status now, since new() goes straight to under_review.
-    if note[3] == "under_review":
-        action = f'<a href="/notes/{note[0]}/review">Continue review &rarr;</a>'
-    elif note[3] == "merged" and note[5]:
-        action = f'<p>Merged into <a href="/notes/{note[5]}">this note</a>.</p>'
-    else:
-        action = ""  # approved / approved_merged / abandoned -- nothing to do here
-
-    related_html = ""
-    if related:
-        items = "".join(f'<li><a href="/notes/{r[0]}">{r[1][:60]}</a></li>' for r in related)
-        related_html = f"<p>Related notes:</p><ul>{items}</ul>"
-
-    return f"""
-        <p><a href="/notes">&larr; back</a></p>
-        <p>Type: {note[1]} | Status: {note[3]}</p>
-        <p>{note[2]}</p>
-        {action}
-        {related_html}
-        <form method="post" action="/notes/{note[0]}/delete">
-            <button type="submit">Delete</button>
-        </form>
-    """
+            
+    if not note:
+        abort(404)
+        
+    # This route now ONLY returns JSON for the modal
+    return jsonify({
+        "id": str(note[0]), 
+        "type": note[1], 
+        "content": note[2], 
+        "status": note[3],
+        "created_at": note[4].strftime('%Y-%m-%d %H:%M') if note[4] else '',
+    })
 
 
 @notes_bp.route("/<uuid:note_id>/delete", methods=["POST"])
@@ -178,3 +127,27 @@ def delete(note_id):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM notes WHERE id = %s", (str(note_id),))
     return redirect(url_for("notes.index"))
+
+
+@notes_bp.route("/search")
+@require_login
+def search():
+    query = request.args.get("q", "").strip()
+    results = []
+    
+    if query:
+        with get_user_scoped_connection(session["user_id"]) as conn:
+            with conn.cursor() as cur:
+                # Simple search: look for query text in note content
+                cur.execute(
+                    """
+                    SELECT id, note_type, content, status, created_at
+                    FROM notes
+                    WHERE content ILIKE %s
+                    ORDER BY created_at DESC
+                    """,
+                    (f"%{query}%",)
+                )
+                results = cur.fetchall()
+    
+    return render_template("notes/search.html", query=query, results=results)

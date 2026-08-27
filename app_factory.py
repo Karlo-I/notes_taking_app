@@ -6,13 +6,29 @@ this security-sensitive shouldn't ride on Flask's own debug flag.
 
 import os
 from dotenv import load_dotenv
-from flask import Flask, redirect, session, url_for
+from flask import Flask, redirect, request, session, url_for
 
 # Force load .env file explicitly, preventing reloader quirks
 load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+
+    @app.after_request
+    def prevent_caching(response):
+        """
+        Prevents the browser from caching pages. 
+        This ensures that hitting the "Back" button after logout 
+        forces a server check and redirects to login, rather than 
+        showing a cached version of the protected page.
+        """
+        # Only apply to HTML pages, let the browser cache static CSS/JS/images for speed
+        if response.content_type.startswith('text/html'):
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
+
     app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
 
     if os.environ.get("APP_ENV") == "development":
@@ -46,19 +62,45 @@ def create_app():
     @app.route("/")
     def index():
         if "user_id" in session:
-            return (
-                f"Logged in as user {session['user_id']}<br>"
-                '<a href="/notes">Your notes</a><br>'
-                '<a href="/outputs">Your outputs</a><br>'
-                '<a href="/logout">Log out</a>'
-            )
+            # Seamless redirect: logged-in users go straight to their notes
+            return redirect(url_for("notes.index"))
+        
+        # Public landing page (only shown when NOT logged in)
         links = [
-            '<a href="/auth/google/login">Log in with Google</a>',
-            '<a href="/auth/github/login">Log in with GitHub</a>',
+            '<a href="/auth/google/login" class="btn">Log in with Google</a>',
+            '<a href="/auth/github/login" class="btn">Log in with GitHub</a>',
         ]
         if os.environ.get("APP_ENV") == "development":
-            links.append('<a href="/dev/login">Dev login</a>')
-        return "Not logged in.<br>" + "<br>".join(links)
+            links.append('<a href="/dev/login" class="btn btn-secondary">Dev Login</a>')
+        
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link rel="stylesheet" href="/static/css/style.css">
+            <style>
+                body {{ 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    height: 100vh; 
+                    flex-direction: column; 
+                    gap: 16px; 
+                    background: var(--bg-body);
+                    margin: 0;
+                }}
+                h1 {{ margin-bottom: 32px; font-weight: 600; }}
+                .login-container {{ display: flex; flex-direction: column; gap: 12px; width: 280px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Welcome to Your Knowledge Base</h1>
+            <div class="login-container">
+                {''.join(links)}
+            </div>
+        </body>
+        </html>
+        """
 
     @app.route("/logout")
     def logout():

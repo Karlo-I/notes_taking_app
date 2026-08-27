@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Your Outputs{% endblock %}
+
+{% block content %}
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Your Outputs</h1>
+        <a href="/outputs/new" class="btn">+ New Output</a>
+    </div>
+
+    {% if outputs %}
+        {% for output in outputs %}
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <span class="badge">{{ output[1] }}</span>
+                        <span class="meta" style="margin-left: 12px;">{{ output[4].strftime('%Y-%m-%d %H:%M') if output[4] else '' }}</span>
+                    </div>
+                </div>
+                <p style="margin: 12px 0; line-height: 1.5; font-size: 15px; font-weight: 500;">
+                    {{ output[2] or 'Untitled Output' }}
+                </p>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    <button 
+                        onclick="loadOutputDetails('{{ output[0] }}')" 
+                        class="btn btn-secondary" 
+                        style="padding: 6px 12px; font-size: 12px; cursor: pointer;"
+                    >
+                        View Output
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+            <p>No outputs yet. Click "+ New Output" to generate your first AI response.</p>
+        </div>
+    {% endif %}
+
+{% endblock %}
