@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Review Note{% endblock %}
+
+{% block content %}
+    <div style="max-width: 800px;">
+        <h1 style="margin-bottom: 24px;">Review Note</h1>
+        
+        <!-- Note Card -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <span class="badge">{{ note[1].upper() }}</span>
+                <span class="meta">Classified as: {{ note[1] }}</span>
+            </div>
+            <textarea id="note-content" 
+                style="width: 100%; min-height: 120px; padding: 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; margin-top: 12px; font-family: inherit; resize: vertical;"
+            >{{ note[2] }}</textarea>
+            
+            <div style="margin-top: 16px; display: flex; gap: 12px;">
+                <button onclick="editNote()" class="btn btn-secondary">Edit</button>
+                <button onclick="saveNote('{{ note[0] }}')" class="btn">Approve & Save</button>
+                <button onclick="cancelReview('{{ note[0] }}')" class="btn btn-secondary" style="color: var(--danger);">Cancel (Delete)</button>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 12px;">
+                Click Edit to change the wording. Approve & Save stores whatever's currently shown above and ends the review. Cancel deletes this note entirely.
+            </p>
+        </div>
+        
+        <!-- Critic Feedback -->
+        {% if latest_critique %}
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px;">Latest Critic Feedback</h3>
+                <div style="white-space: pre-wrap; line-height: 1.6; padding: 16px; background: #f8fafc; border-radius: 6px; font-size: 14px; border-left: 3px solid var(--primary);">
+                    {{ latest_critique }}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Conversation History -->
+        {% if messages %}
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px;">Conversation History</h3>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    {% for msg in messages %}
+                        <div style="padding: 12px 16px; border-radius: 8px; {% if msg[0] == 'critic' %}background: #f1f5f9;{% else %}background: #e0e7ff; margin-left: 40px;{% endif %}">
+                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px; {% if msg[0] == 'critic' %}color: var(--text-secondary);{% else %}color: var(--primary);{% endif %}">
+                                {{ msg[0].upper() }}
+                            </div>
+                            <div style="white-space: pre-wrap; line-height: 1.5; font-size: 14px;">
+                                {{ msg[1] }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Reply Form -->
+        <div class="card">
+            <h3 style="margin-bottom: 16px; font-size: 16px;">Reply to Critic</h3>
+            <textarea id="reply-input" 
+                placeholder="Reply to the critic..." 
+                style="width: 100%; min-height: 80px; padding: 12px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit;"
+            ></textarea>
+            <button onclick="sendReply('{{ note[0] }}')" class="btn" style="margin-top: 12px;">Send Reply</button>
+        </div>
+    </div>
+    
+    <script>
+        function editNote() {
+            const textarea = document.getElementById('note-content');
+            textarea.disabled = false;
+            textarea.focus();
+        }
+        
+        async function saveNote(noteId) {
+            const content = document.getElementById('note-content').value;
+            const formData = new FormData();
+            formData.append('content', content); // Matches request.form.get("content") in approve()
+            
+            try {
+                const res = await fetch(`/notes/${noteId}/review/approve`, { method: 'POST', body: formData });
+                if (res.ok) {
+                    window.location.href = '/notes'; // Redirect to notes list on success
+                } else {
+                    alert('Error saving note');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        function cancelReview(noteId) {
+            if (confirm('Are you sure you want to delete this note?')) {
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = `/notes/${noteId}/delete`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        async function sendReply(noteId) {
+            const message = document.getElementById('reply-input').value;
+            if (!message.trim()) {
+                alert('Please enter a reply');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('reply', message); // Matches request.form.get("reply") in reply()
+            
+            try {
+                const res = await fetch(`/notes/${noteId}/review/reply`, { method: 'POST', body: formData });
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Error sending reply');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+{% endblock %}

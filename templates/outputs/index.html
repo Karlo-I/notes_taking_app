@@ -5,7 +5,7 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <h1>Your Outputs</h1>
-        <a href="/outputs/new" class="btn">+ New Output</a>
+        <button onclick="openNewOutputModal()" class="btn">+ New Output</button>
     </div>
 
     {% if outputs %}

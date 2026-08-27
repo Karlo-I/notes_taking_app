@@ -111,6 +111,94 @@
                 alert("ERROR: " + error.message);
             }
         }
+
+        // --- New Note Modal ---
+        function openNewNoteModal() {
+            const body = `
+                <form id="new-note-form" onsubmit="submitNewNote(event)">
+                    <textarea name="content" placeholder="Write your note..." required 
+                        style="width: 100%; min-height: 150px; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                </form>
+            `;
+            const footer = `
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" form="new-note-form" class="btn">Submit Note</button>
+            `;
+            openModal('New Note', body, footer);
+        }
+
+        async function submitNewNote(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            try {
+                const res = await fetch('/notes/new', { method: 'POST', body: formData });
+                if (res.ok) {
+                    closeModal();
+                    window.location.reload(); // Refresh list to show new note
+                } else {
+                    alert("Error creating note. Please check your input.");
+                }
+            } catch (error) {
+                alert("Error: " + error.message);
+            }
+        }
+
+        // --- New Output Modal ---
+        function openNewOutputModal() {
+            const body = `
+                <form id="new-output-form" onsubmit="submitNewOutput(event)">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Topic or question:</label>
+                        <textarea name="topic_query" placeholder="e.g. What have I learned about FATCA compliance?" required 
+                            style="width: 100%; min-height: 100px; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Output type:</label>
+                        <select name="output_type" style="width: 100%; padding: 10px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; background: white;">
+                            <option value="qna">Q&A Document</option>
+                            <option value="narration">Narration Script</option>
+                            <option value="summary">Topic Summary</option>
+                        </select>
+                    </div>
+                </form>
+            `;
+            const footer = `
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" form="new-output-form" class="btn">Generate</button>
+            `;
+            openModal('New Output', body, footer);
+        }
+
+        async function submitNewOutput(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            // Prevent double-clicks while generating
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = 'Generating...';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/outputs/new', { method: 'POST', body: formData });
+                if (res.ok) {
+                    closeModal();
+                    window.location.reload(); // Refresh list to show new output
+                } else {
+                    alert("Error creating output. Please check your input.");
+                    submitBtn.innerText = originalText;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                alert("Error: " + error.message);
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
     </script>
 
 </body>

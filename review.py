@@ -13,7 +13,7 @@ from critic import get_critic_reply
 from db import get_user_scoped_connection, vector_literal
 from decorators import require_login
 from embeddings import get_embedding
-from flask import Blueprint, abort, redirect, request, session, url_for
+from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 from integration import decide as integration_decide
 
 review_bp = Blueprint("review", __name__, url_prefix="/notes")
@@ -200,50 +200,44 @@ def start(note_id):
 def view(note_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
+            # 1. Get the note
             cur.execute(
-                "SELECT note_type, content, status FROM notes WHERE id = %s",
-                (str(note_id),),
+                "SELECT id, note_type, content, status FROM notes WHERE id = %s",
+                (str(note_id),)
             )
             note = cur.fetchone()
             if note is None:
                 abort(404)
-            note_type, content, status = note
-
-            session_id = _open_session_id(cur, note_id)
-            turns = []
+            
+            # 2. Get the active critique session
+            cur.execute(
+                "SELECT id FROM critique_sessions WHERE note_id = %s AND resolution IS NULL ORDER BY started_at DESC LIMIT 1",
+                (str(note_id),)
+            )
+            session_row = cur.fetchone()
+            session_id = session_row[0] if session_row else None
+            
+            messages = []
             if session_id:
+                # 3. Get the conversation turns for this session
                 cur.execute(
-                    "SELECT role, content FROM critique_turns "
-                    "WHERE session_id = %s ORDER BY turn_number",
-                    (str(session_id),),
+                    "SELECT role, content FROM critique_turns WHERE session_id = %s ORDER BY turn_number",
+                    (str(session_id),)
                 )
-                turns = cur.fetchall()
+                messages = cur.fetchall()
 
-    if session_id is None:
-        return f"<p>{content}</p><p>Status: {status} -- no open review for this note.</p>"
+    # Extract the latest critic message for the dedicated "Critic Feedback" box
+    latest_critique = ""
+    if messages:
+        for role, content in reversed(messages):
+            if role == 'critic':
+                latest_critique = content
+                break
 
-    transcript_html = "".join(f"<p><b>{role}:</b> {text}</p>" for role, text in turns)
-
-    return f"""
-        <p><a href="/notes/{note_id}">&larr; back</a></p>
-        <p style="font-size: 0.85em; color: #666;">Classified as: {note_type}</p>
-
-        <form method="post" id="finalize-form"></form>
-        <textarea id="note-content" name="content" form="finalize-form" rows="4" cols="50" readonly>{content}</textarea><br>
-        <button type="button" onclick="document.getElementById('note-content').readOnly = false; document.getElementById('note-content').focus();">Edit</button>
-        <button type="submit" form="finalize-form" formaction="/notes/{note_id}/review/approve">Save</button>
-        <form method="post" action="/notes/{note_id}/delete" style="display: inline;">
-            <button type="submit">Cancel</button>
-        </form>
-        <p style="font-size: 0.85em; color: #666;">Click Edit to change the wording. Save stores whatever's currently shown above. Cancel deletes this note entirely.</p>
-
-        {transcript_html}
-
-        <form method="post" action="/notes/{note_id}/review/reply">
-            <textarea name="reply" rows="4" cols="50" placeholder="Reply to the critic..."></textarea><br>
-            <button type="submit">Send</button>
-        </form>
-    """
+    return render_template("review/view.html", 
+                         note=note, 
+                         messages=messages, 
+                         latest_critique=latest_critique)
 
 
 @review_bp.route("/<uuid:note_id>/review/reply", methods=["POST"])

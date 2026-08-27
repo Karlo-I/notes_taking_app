@@ -4,7 +4,7 @@
 
 **AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic). All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
 
-**Last updated:** placeholder — update as decisions change.
+**Last updated:** August 28, 2026
 
 ---
 
@@ -68,8 +68,9 @@ Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critiqu
 
 - **Transport:** HTTPS, automatic via hosting provider. No engineering cost.
 - **At rest:** provider-level disk encryption (default from hosting provider) is the chosen baseline. Field-level or zero-knowledge encryption was considered and explicitly not adopted — it conflicts with the core feature, since the LLM needs plaintext at request time to critique and retrieve.
-- **Auth:** OAuth (Google/GitHub). No password ever touches the app.
+- **Auth:** OAuth (Google/GitHub). No password ever touches the app. Callback URLs strictly use `127.0.0.1` (not `localhost`) to prevent redirect_uri mismatch errors.
 - **Row Level Security:** enabled on all user-scoped tables. Policies check `user_id = current_setting('app.current_user_id')`. **Must be set per-request via `SET LOCAL` inside a transaction, not per-connection** — pooled connections reused across users will leak context otherwise if this is done wrong. This is the single most important implementation detail to get right early.
+- **Cache Prevention:** Strict HTTP headers (`Cache-Control`, `Pragma`, `Expires`) are applied to all HTML responses via an `@app.after_request` hook. This prevents the browser from caching protected pages, ensuring that hitting the "Back" button after logout forces a server check and redirects to the login page, rather than showing a cached version of private data.
 - **AI training:** whichever LLM provider is used, confirm current terms directly rather than assume — state findings honestly in the app's own privacy page.
 
 ## 7. Cost model
@@ -87,14 +88,20 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 5. Integration agent
 6. Retrieval + output generation (all three output types share this infrastructure)
 7. PDF export
+8. Background run script (start.sh) & Docker auto-start configuration
+9. UI/UX Overhaul (Sidebar layout, Jinja2 templates, premium CSS)
+10. Glassmorphism Modal system (replacing separate detail pages)
+11. Global hybrid search (keyword + vector) in the navbar
+12. Mobile-responsive CSS tweaks
 
 ## 9. Tech stack
 
-- Backend: Python / Flask
+- Backend: Python / Flask (Blueprints & App Factory pattern)
 - DB: PostgreSQL + pgvector, run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
-- Auth: OAuth 2.0 (Google/GitHub)
+- Auth: OAuth 2.0 (Google/GitHub) via Authlib
 - AI: Claude Haiku-class model for critic + integration; stronger model optional for draft prose
-- PDF: not yet chosen (see open questions)
+- Frontend: Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
+- DevOps: Custom `start.sh` background script, Docker Compose for local PostgreSQL
 
 ## 10. What this deliberately is not
 
@@ -102,6 +109,12 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 
 ## 11. Not yet decided
 
-- PDF generation library
 - Exact embedding model and vector dimension size
 - Whether `users` table needs its own RLS policy, given the OAuth login lookup happens before a user context exists (open chicken-and-egg problem, addressed with a narrower app-level query pattern for login only — see comment in schema.sql)
+
+## 12. Implementation Notes & Recent Additions
+
+- Modals & JSON: The `notes.py` and `outputs.py` detail routes return raw JSON when queried with `?format=json`. This powers the frontend modal system without requiring a separate API blueprint.
+- Embeddings: Notes are only embedded into the vector database `after` they are approved. Drafts and notes under review are never searchable.
+- Versioning: When a note is merged or its wording is changed during the review process, the original content is preserved in the `note_versions` table. Nothing is ever permanently lost.
+- Docker & Background Processes: The app and database are decoupled. `start.sh` handles spinning up Docker and the Flask app in the background. Docker Desktop is configured to auto-start on Mac login.
