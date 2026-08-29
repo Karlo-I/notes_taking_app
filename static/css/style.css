@@ -95,7 +95,7 @@ a:hover { text-decoration: underline; }
 }
 .btn:hover { background: var(--primary-hover); text-decoration: none; color: white; }
 .btn-secondary { background: white; color: var(--text-primary); border: 1px solid var(--border-color); }
-.btn-secondary:hover { background: #f8fafc; }
+.btn-secondary:hover { background: #f8fafc; color: var(--text-primary); }
 
 /* --- Cards & Lists --- */
 .card {

@@ -90,9 +90,16 @@
                 const body = '<div style="white-space: pre-line; font-family: serif; line-height: 1.5;">' + data.content + '</div>';
                 
                 let footer = '';
+
+                // Delete button (pushed to the far left)
                 footer += `<form method="post" action="/outputs/${data.id}/delete" style="margin-right: auto;">
                     <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
                 </form>`;
+
+                // Download PDF button
+                footer += `<a href="/outputs/${data.id}/pdf" class="btn btn-secondary" style="margin-right: 8px;">Download PDF</a>`;
+
+                // Regenerate button
                 footer += `<form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;">
                     <button type="submit" class="btn">Regenerate</button>
                 </form>`;
