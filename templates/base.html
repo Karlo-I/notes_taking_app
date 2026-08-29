@@ -97,7 +97,7 @@
                     <button type="submit" class="btn">Regenerate</button>
                 </form>`;
 
-                openModal(`${data.type.toUpperCase()} • ${data.topic || 'Untitled'}`, body, footer);
+                openModal(`[${data.type.toUpperCase()}] ${data.topic || 'Untitled'}`, body, footer);
             } catch (error) {
                 alert("ERROR: " + error.message);
             }
