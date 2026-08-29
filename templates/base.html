@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Notes App{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=3">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 </head>
 <body>
 
@@ -44,12 +45,15 @@
             document.getElementById('modal-footer').innerHTML = footerHtml;
             document.getElementById('global-modal').classList.add('active');
         }
+        
         function closeModal() {
             document.getElementById('global-modal').classList.remove('active');
         }
+        
         document.getElementById('global-modal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+        
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeModal();
         });
@@ -63,15 +67,10 @@
                 const body = '<div style="white-space: pre-wrap; font-size: 15px; line-height: 1.6;">' + data.content + '</div>';
                 
                 let footer = '';
-                
-                // 1. Delete Button (Left aligned)
-                footer += `
-                    <form method="post" action="/notes/${data.id}/delete" style="margin-right: auto;">
-                        <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
-                    </form>
-                `;
+                footer += `<form method="post" action="/notes/${data.id}/delete" style="margin-right: auto;">
+                    <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
+                </form>`;
 
-                // 2. Action Buttons (Right aligned)
                 if (data.status === 'under_review') {
                     footer += `<a href="/notes/${data.id}/review" class="btn">Continue Review</a>`;
                 }
@@ -88,29 +87,26 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 
-                const body = '<div style="white-space: pre-wrap; font-family: serif; line-height: 1.6;">' + data.content + '</div>';
+                const body = '<div style="white-space: pre-line; font-family: serif; line-height: 1.5;">' + data.content + '</div>';
                 
                 let footer = '';
-
-                // 1. Delete Button (Left aligned)
-                footer += `
-                    <form method="post" action="/outputs/${data.id}/delete" style="margin-right: auto;">
-                        <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
-                    </form>
-                `;
-
-                // 2. Regenerate Button (Right aligned)
-                footer += `
-                    <form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;">
-                        <button type="submit" class="btn btn-secondary">Regenerate</button>
-                    </form>
-                `;
+                footer += `<form method="post" action="/outputs/${data.id}/delete" style="margin-right: auto;">
+                    <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
+                </form>`;
+                footer += `<form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;">
+                    <button type="submit" class="btn">Regenerate</button>
+                </form>`;
 
                 openModal(`${data.type.toUpperCase()} • ${data.topic || 'Untitled'}`, body, footer);
             } catch (error) {
                 alert("ERROR: " + error.message);
             }
         }
+
+        // Helper function for note links inside outputs
+        window.openNoteFromOutput = function(noteId) {
+            loadNoteDetails(noteId);
+        };
 
         // --- New Note Modal ---
         function openNewNoteModal() {
@@ -129,19 +125,44 @@
 
         async function submitNewNote(event) {
             event.preventDefault();
-            const form = event.target;
+            
+            const form = document.getElementById('new-note-form');
+            if (!form) {
+                alert("Error: Form not found");
+                return;
+            }
+            
             const formData = new FormData(form);
             
+            const submitBtn = document.querySelector('#modal-footer button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerText = 'Saving...';
+                submitBtn.disabled = true;
+            }
+
             try {
-                const res = await fetch('/notes/new', { method: 'POST', body: formData });
+                const res = await fetch('/notes/new', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                
                 if (res.ok) {
                     closeModal();
-                    window.location.reload(); // Refresh list to show new note
+                    window.location.href = '/notes';
                 } else {
-                    alert("Error creating note. Please check your input.");
+                    const errorText = await res.text();
+                    alert("Error: " + errorText);
+                    if (submitBtn) {
+                        submitBtn.innerText = 'Submit Note';
+                        submitBtn.disabled = false;
+                    }
                 }
             } catch (error) {
-                alert("Error: " + error.message);
+                alert("Error creating note: " + error.message);
+                if (submitBtn) {
+                    submitBtn.innerText = 'Submit Note';
+                    submitBtn.disabled = false;
+                }
             }
         }
 
@@ -149,19 +170,14 @@
         function openNewOutputModal() {
             const body = `
                 <form id="new-output-form" onsubmit="submitNewOutput(event)">
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Topic or question:</label>
-                        <textarea name="topic_query" placeholder="e.g. What have I learned about FATCA compliance?" required 
-                            style="width: 100%; min-height: 100px; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Output type:</label>
-                        <select name="output_type" style="width: 100%; padding: 10px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; background: white;">
-                            <option value="qna">Q&A Document</option>
-                            <option value="narration">Narration Script</option>
-                            <option value="summary">Topic Summary</option>
-                        </select>
-                    </div>
+                    <textarea name="topic_query" placeholder="e.g. What have I learned about FATCA compliance?" required 
+                        style="width: 100%; min-height: 150px; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit; margin-bottom: 16px;"></textarea>
+                    
+                    <select name="output_type" style="width: 100%; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; background: white; font-family: inherit;">
+                        <option value="qna">Q&A Document</option>
+                        <option value="narration">Narration Script</option>
+                        <option value="summary">Topic Summary</option>
+                    </select>
                 </form>
             `;
             const footer = `
@@ -173,31 +189,57 @@
 
         async function submitNewOutput(event) {
             event.preventDefault();
-            const form = event.target;
+            
+            const form = document.getElementById('new-output-form');
+            if (!form) return;
+            
             const formData = new FormData(form);
             
-            // Prevent double-clicks while generating
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerText;
-            submitBtn.innerText = 'Generating...';
-            submitBtn.disabled = true;
+            const submitBtn = document.querySelector('#modal-footer button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerText = 'Generating...';
+                submitBtn.disabled = true;
+            }
 
             try {
-                const res = await fetch('/outputs/new', { method: 'POST', body: formData });
+                const res = await fetch('/outputs/new', { 
+                    method: 'POST', 
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
                 if (res.ok) {
+                    const data = await res.json();
                     closeModal();
-                    window.location.reload(); // Refresh list to show new output
+                    window.location.href = '/outputs';
                 } else {
-                    alert("Error creating output. Please check your input.");
-                    submitBtn.innerText = originalText;
-                    submitBtn.disabled = false;
+                    const errorData = await res.json().catch(() => ({}));
+                    const errorText = errorData.error || await res.text();
+                    alert("Server error: " + errorText);
+                    if (submitBtn) {
+                        submitBtn.innerText = 'Generate';
+                        submitBtn.disabled = false;
+                    }
                 }
             } catch (error) {
                 alert("Error: " + error.message);
-                submitBtn.innerText = originalText;
-                submitBtn.disabled = false;
+                if (submitBtn) {
+                    submitBtn.innerText = 'Generate';
+                    submitBtn.disabled = false;
+                }
             }
         }
+
+        // Event delegation for note links in outputs
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('[data-note-link]')) {
+                e.preventDefault();
+                const noteId = e.target.getAttribute('data-note-link');
+                loadNoteDetails(noteId);
+            }
+        });
 
     </script>
 

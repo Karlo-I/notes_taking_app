@@ -9,6 +9,7 @@ isolation automatically -- no WHERE user_id = ... anywhere in this file.
 import html
 import json
 import os
+import re
 from db import get_user_scoped_connection
 from decorators import require_login
 from flask import Blueprint, abort, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -59,14 +60,21 @@ def new():
     output_type = request.form.get("output_type", "").strip()
 
     if not topic_query:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"error": "Topic query is required."}), 400
         abort(400, "Topic query is required.")
+        
     if output_type not in SYSTEM_PROMPTS:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"error": f"Invalid output_type: {output_type}"}), 400
         abort(400, f"Invalid output_type: {output_type}")
 
     try:
         result = generate_output(session["user_id"], topic_query, output_type)
     except ValueError as e:
-        # Re-render form with error message
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"error": str(e)}), 400
+        # Re-render form with error message for traditional submission
         return f"""
             <p><a href="/outputs">&larr; back</a></p>
             <p style="color:red;">{e}</p>
@@ -85,6 +93,11 @@ def new():
             </form>
         """
 
+    # If it's an AJAX request from the modal, return JSON instead of redirecting
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({"success": True, "output_id": result["id"]})
+
+    # Traditional form submission - redirect
     return redirect(url_for("outputs.view", output_id=result["id"]))
 
 
@@ -102,13 +115,36 @@ def view(output_id):
             
     if not output:
         abort(404)
-        
+    
+    # Process Markdown formatting in the content
+    content = output[3]
+    safe_content = html.escape(content)
+    
+    # Convert bold and italics ONLY
+    safe_content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', safe_content)
+    safe_content = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', safe_content)
+    
+    # Convert bullets to simple bold with indent (no div wrapper)
+    safe_content = re.sub(r'^- (.+)$', r'&nbsp;&nbsp;• \1', safe_content, flags=re.MULTILINE)
+    
+    # Convert headings to bold text (not HTML headings)
+    safe_content = re.sub(r'^### (.+)$', r'<strong>\1</strong>', safe_content, flags=re.MULTILINE)
+    safe_content = re.sub(r'^## (.+)$', r'<strong>\1</strong>', safe_content, flags=re.MULTILINE)
+    safe_content = re.sub(r'^# (.+)$', r'<strong style="font-size: 1.1em;">\1</strong>', safe_content, flags=re.MULTILINE)
+
+    # Convert [Note UUID] to clickable links
+    safe_content = re.sub(
+        r'\[Note ([0-9a-f-]+)\]',
+        r'<a href="#" data-note-link="\1" style="color: var(--primary); font-weight: 600; cursor: pointer;">[View Note]</a>',
+        safe_content
+    )
+    
     # This route now ONLY returns JSON for the modal
     return jsonify({
         "id": str(output[0]), 
         "type": output[1], 
         "topic": output[2],
-        "content": output[3], 
+        "content": safe_content, 
         "created_at": output[4].strftime('%Y-%m-%d %H:%M') if output[4] else '',
         "model": "Haiku" 
     })
@@ -131,11 +167,10 @@ def regenerate(output_id):
     topic_query, output_type = existing
 
     try:
-        result = generate_output(session["user_id"], topic_query, output_type)
+        result = generate_output(session["user_id"], topic_query, output_type, is_regeneration=True)
     except ValueError as e:
-        return redirect(url_for("outputs.index"))  # Changed this line too
+        return redirect(url_for("outputs.index"))
 
-    # Update the existing row instead of creating a new one
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -152,9 +187,8 @@ def regenerate(output_id):
                  result.get("output_tokens", 0), os.environ.get("OUTPUT_MODEL"),
                  str(output_id)),
             )
-            # Delete old provenance and re-insert
+            
             cur.execute("DELETE FROM output_sources WHERE output_id = %s", (str(output_id),))
-            # Re-retrieve to get fresh source note IDs
             from retrieval import find_relevant_notes
             relevant = find_relevant_notes(session["user_id"], topic_query)
             for n in relevant:
@@ -162,6 +196,9 @@ def regenerate(output_id):
                     "INSERT INTO output_sources (output_id, note_id) VALUES (%s, %s)",
                     (str(output_id), n["id"]),
                 )
+
+            cur.execute("DELETE FROM output_sources WHERE output_id = %s", (str(result["id"]),))
+            cur.execute("DELETE FROM outputs WHERE id = %s", (str(result["id"]),))
 
     return redirect(url_for("outputs.index"))
 
@@ -187,7 +224,6 @@ def download_pdf(output_id):
 
     otype, topic, content, created = output
 
-    # Escape HTML entities in generated content for safe rendering
     escaped_content = (
         content.replace("&", "&amp;")
                .replace("<", "&lt;")
@@ -201,32 +237,11 @@ def download_pdf(output_id):
         <head>
             <meta charset="utf-8">
             <style>
-                body {{
-                    font-family: Georgia, 'Times New Roman', serif;
-                    line-height: 1.6;
-                    max-width: 700px;
-                    margin: 40px auto;
-                    padding: 0 20px;
-                    color: #222;
-                }}
-                h1 {{
-                    font-size: 1.5em;
-                    border-bottom: 1px solid #ccc;
-                    padding-bottom: 8px;
-                    margin-bottom: 8px;
-                }}
-                .meta {{
-                    color: #666;
-                    font-size: 0.9em;
-                    margin-bottom: 24px;
-                }}
-                .content {{
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                }}
-                @media print {{
-                    body {{ margin: 0; padding: 20px; }}
-                }}
+                body {{ font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; max-width: 700px; margin: 40px auto; padding: 0 20px; color: #222; }}
+                h1 {{ font-size: 1.5em; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 8px; }}
+                .meta {{ color: #666; font-size: 0.9em; margin-bottom: 24px; }}
+                .content {{ white-space: pre-wrap; word-wrap: break-word; }}
+                @media print {{ body {{ margin: 0; padding: 20px; }} }}
             </style>
         </head>
         <body>

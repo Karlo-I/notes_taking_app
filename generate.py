@@ -57,7 +57,7 @@ RULES:
 }
 
 
-def generate_output(user_id: str, topic_query: str, output_type: str) -> dict:
+def generate_output(user_id: str, topic_query: str, output_type: str, is_regeneration: bool = False) -> dict:
     """
     Full generation pipeline:
       1. Retrieve relevant approved notes
@@ -93,6 +93,9 @@ def generate_output(user_id: str, topic_query: str, output_type: str) -> dict:
         f"Write the {output_type} output now."
     )
 
+    if is_regeneration:
+        user_message += "\n\n[REGENERATION INSTRUCTION]: This is a request to regenerate a previous output. You MUST provide a fresh perspective. Vary your sentence structure, use different vocabulary, and reorganize the flow. Do not simply repeat the previous output word-for-word."
+
     # Step 3: call LLM
     response = _CLIENT.messages.create(
         model=_MODEL,
@@ -100,7 +103,16 @@ def generate_output(user_id: str, topic_query: str, output_type: str) -> dict:
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
-    generated_content = response.content[0].text
+    # Extract text content, handling thinking blocks
+    generated_content = ""
+    for block in response.content:
+        if hasattr(block, 'text'):
+            generated_content = block.text
+            break
+    
+    # Fallback if no text block found
+    if not generated_content:
+        generated_content = str(response.content)
 
     # Extract token usage from Anthropic response metadata
     usage = response.usage

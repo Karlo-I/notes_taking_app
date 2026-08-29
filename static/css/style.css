@@ -134,7 +134,7 @@ a:hover { text-decoration: underline; }
 /* --- Forms --- */
 input[type="text"], textarea {
     width: 100%;
-    padding: 8px 12px;
+    padding: 8px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
     font-size: 14px;
@@ -142,6 +142,7 @@ input[type="text"], textarea {
     color: var(--text-primary);
     background: white;
 }
+
 input[type="text"]:focus, textarea:focus {
     outline: none;
     border-color: var(--primary);
@@ -184,7 +185,6 @@ input[type="text"]:focus, textarea:focus {
     line-height: 1.6; 
     color: var(--text-primary); 
     font-size: 15px;
-    white-space: pre-wrap; /* Preserves formatting for notes/outputs */
 }
 .modal-footer { 
     padding: 16px 24px; 

@@ -9,6 +9,8 @@ critic (a slow network request), then open a new connection to write the
 result. Never hold a pooled connection open while waiting on Anthropic.
 """
 
+import html
+import re
 from critic import get_critic_reply
 from db import get_user_scoped_connection, vector_literal
 from decorators import require_login
@@ -225,6 +227,18 @@ def view(note_id):
                     (str(session_id),)
                 )
                 messages = cur.fetchall()
+
+            # Convert Markdown bold/italics to HTML safely
+            processed_messages = []
+            for role, content in messages:
+                # 1. Escape HTML first to prevent XSS
+                safe_content = html.escape(content)
+                # 2. Convert **text** to <strong>text</strong> (Bold)
+                safe_content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', safe_content)
+                # 3. Convert *text* to <em>text</em> (Italics)
+                safe_content = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', safe_content)
+                processed_messages.append((role, safe_content))
+            messages = processed_messages
 
     # Extract the latest critic message for the dedicated "Critic Feedback" box
     latest_critique = ""

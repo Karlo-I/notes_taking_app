@@ -13,28 +13,19 @@
                 <span class="meta">Classified as: {{ note[1] }}</span>
             </div>
             <textarea id="note-content" 
-                style="width: 100%; min-height: 120px; padding: 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; margin-top: 12px; font-family: inherit; resize: vertical;"
+                disabled
+                style="width: 100%; min-height: 120px; padding: 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; margin-top: 12px; font-family: inherit; resize: vertical; background-color: #f9fafb;"
             >{{ note[2] }}</textarea>
             
             <div style="margin-top: 16px; display: flex; gap: 12px;">
                 <button onclick="editNote()" class="btn btn-secondary">Edit</button>
-                <button onclick="saveNote('{{ note[0] }}')" class="btn">Approve & Save</button>
-                <button onclick="cancelReview('{{ note[0] }}')" class="btn btn-secondary" style="color: var(--danger);">Cancel (Delete)</button>
+                <button onclick="saveNote('{{ note[0] }}')" class="btn">Save</button>
+                <button onclick="cancelReview('{{ note[0] }}')" class="btn btn-secondary" style="color: var(--danger);">Delete</button>
             </div>
             <p style="font-size: 12px; color: var(--text-secondary); margin-top: 12px;">
                 Click Edit to change the wording. Approve & Save stores whatever's currently shown above and ends the review. Cancel deletes this note entirely.
             </p>
         </div>
-        
-        <!-- Critic Feedback -->
-        {% if latest_critique %}
-            <div class="card" style="margin-bottom: 24px;">
-                <h3 style="margin-bottom: 16px; font-size: 16px;">Latest Critic Feedback</h3>
-                <div style="white-space: pre-wrap; line-height: 1.6; padding: 16px; background: #f8fafc; border-radius: 6px; font-size: 14px; border-left: 3px solid var(--primary);">
-                    {{ latest_critique }}
-                </div>
-            </div>
-        {% endif %}
         
         <!-- Conversation History -->
         {% if messages %}
@@ -43,11 +34,11 @@
                 <div style="display: flex; flex-direction: column; gap: 16px;">
                     {% for msg in messages %}
                         <div style="padding: 12px 16px; border-radius: 8px; {% if msg[0] == 'critic' %}background: #f1f5f9;{% else %}background: #e0e7ff; margin-left: 40px;{% endif %}">
-                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px; {% if msg[0] == 'critic' %}color: var(--text-secondary);{% else %}color: var(--primary);{% endif %}">
+                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 0px; {% if msg[0] == 'critic' %}color: var(--text-secondary);{% else %}color: var(--primary);{% endif %}">
                                 {{ msg[0].upper() }}
                             </div>
-                            <div style="white-space: pre-wrap; line-height: 1.5; font-size: 14px;">
-                                {{ msg[1] }}
+                            <div style="white-space: pre-line; line-height: 1.5; font-size: 14px;">
+                                {{ msg[1] | safe }}
                             </div>
                         </div>
                     {% endfor %}
@@ -70,18 +61,19 @@
         function editNote() {
             const textarea = document.getElementById('note-content');
             textarea.disabled = false;
+            textarea.style.backgroundColor = 'white';
             textarea.focus();
         }
         
         async function saveNote(noteId) {
             const content = document.getElementById('note-content').value;
             const formData = new FormData();
-            formData.append('content', content); // Matches request.form.get("content") in approve()
+            formData.append('content', content);
             
             try {
                 const res = await fetch(`/notes/${noteId}/review/approve`, { method: 'POST', body: formData });
                 if (res.ok) {
-                    window.location.href = '/notes'; // Redirect to notes list on success
+                    window.location.href = '/notes';
                 } else {
                     alert('Error saving note');
                 }
@@ -108,7 +100,7 @@
             }
             
             const formData = new FormData();
-            formData.append('reply', message); // Matches request.form.get("reply") in reply()
+            formData.append('reply', message);
             
             try {
                 const res = await fetch(`/notes/${noteId}/review/reply`, { method: 'POST', body: formData });
