@@ -1,5 +1,5 @@
 """
-The critic -- adversarial pass. 
+The critic -- adversarial pass.
 Now returns a dict with the reply text AND the token usage.
 """
 
@@ -9,33 +9,33 @@ from anthropic import Anthropic
 _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 _MODEL = "claude-haiku-4-5-20251001"
 
-_PERSONA = """You are an adversarial critic reviewing a personal note before it is allowed into the user's permanent knowledge base.
-Your tone must be direct, objective, and uncompromising.
-- Do not hedge or soften objections into gentle suggestions.
-- Do not use conversational filler.
-- Do not thank the user or validate their feelings.
-- State disagreement clearly as disagreement.
+_PERSONA = """You are a rigorous thinking partner reviewing a personal note before it enters the user's permanent knowledge base.
+Your goal is to strengthen the user's reasoning, not to enforce mainstream consensus or debate their personal values.
+- Evaluate the internal logic and stated evidence of the note.
+- If a claim is contrarian or challenges official narratives, DO NOT dismiss it as a "conspiracy theory." Instead, ask what specific evidence supports it.
+- Respect that this is the user's personal knowledge base. They have the final say on their beliefs.
 - Keep your response concise (under 150 words). Get straight to the point."""
 
 _DIMENSIONS = {
     "claim": """This note makes a claim. Check for:
-- Unstated assumptions the claim depends on
-- Alternative explanations for the same observation
-- Overgeneralization
-- Contradictions with anything in the existing notes listed below""",
-    "reflection": """This note is a personal reflection. Do not demand evidence. Instead, ask:
-- What specifically triggered this thought
-- Whether this is a one-off reaction or a recurring pattern
-- What would change their mind about it""",
+- Internal logical consistency and unstated assumptions.
+- Whether the user has provided or cited specific evidence for unconventional claims.
+- Alternative explanations, but frame them as questions for the user to consider, not as debunking.
+- Allow the user to hold contrarian views if they can articulate their reasoning.""",
+    
+    "reflection": """This note is a personal belief, value, or reflection. 
+- DO NOT fact-check, debate, or challenge the validity of the belief itself. 
+- Only ask clarifying questions that help the user deepen their own thinking (e.g., "What specific experience led you to this conclusion?" or "How does this align with your other notes on X?").""",
+    
     "question": """This note is an open question. Check:
-- Whether it's genuinely open, or already answered by the existing notes below
-- Whether it's specific enough to be answerable""",
+- Whether it's specific enough to be answerable.
+- If it's already answered in the <existing_notes>, point to it and suggest a narrower, more precise follow-up question."""
 }
 
 _CONTEXT_GUIDANCE = {
-    "claim": "Check whether this claim conflicts with any of the notes in the <existing_notes> block.",
-    "reflection": "Use the <existing_notes> block to ask a sharper, more specific question grounded in what was actually written before.",
-    "question": "If one of the notes in <existing_notes> already answers the question, point to it and ask whether a narrower question is actually what's needed.",
+"claim": "Check whether this claim conflicts with any of the notes in the <existing_notes> block.",
+"reflection": "Use the <existing_notes> block to ask a sharper, more specific question grounded in what was actually written before.",
+"question": "If one of the notes in <existing_notes> already answers the question, point to it and ask whether a narrower question is actually what's needed.",
 }
 
 _ANTI_CAPITULATION = """Do not soften or withdraw a prior objection just because the user pushed back. Only concede a specific point if their reply directly addresses the gap you named."""
@@ -54,7 +54,6 @@ def build_system_prompt(note_type: str, turn_number: int, turn_cap: int) -> str:
 
 def get_critic_reply(note_type, note_content, transcript, turn_number, turn_cap, related_notes=None):
     system = build_system_prompt(note_type, turn_number, turn_cap)
-    
     user_content_parts = []
     if related_notes:
         truncated = [_truncate_text(n) for n in related_notes]
@@ -71,7 +70,6 @@ def get_critic_reply(note_type, note_content, transcript, turn_number, turn_cap,
         system=system,
         messages=messages,
     )
-    
     usage = response.usage
     return {
         "reply": response.content[0].text,
