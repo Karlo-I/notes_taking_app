@@ -75,28 +75,23 @@ def create_app():
         
         return f"""
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Knowledge Base — Login</title>
             <link rel="stylesheet" href="/static/css/style.css">
-            <style>
-                body {{ 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    height: 100vh; 
-                    flex-direction: column; 
-                    gap: 16px; 
-                    background: var(--bg-body);
-                    margin: 0;
-                }}
-                h1 {{ margin-bottom: 32px; font-weight: 600; }}
-                .login-container {{ display: flex; flex-direction: column; gap: 12px; width: 280px; }}
-            </style>
         </head>
-        <body>
-            <h1>Welcome to Your Knowledge Base</h1>
-            <div class="login-container">
-                {''.join(links)}
+        <body class="login-body">
+            <div class="login-page">
+                <div class="login-card">
+                    <div class="login-icon">🧠</div>
+                    <h1 class="login-title">Welcome to Your Knowledge Base</h1>
+                    <p class="login-subtitle">Sharpen your thinking before it's recorded. Sign in to continue.</p>
+                    <div class="login-links">
+                        {''.join(links)}
+                    </div>
+                </div>
             </div>
         </body>
         </html>

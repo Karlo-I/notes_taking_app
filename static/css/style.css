@@ -429,12 +429,15 @@ input[type="text"]:focus, textarea:focus, select:focus {
     box-shadow: var(--shadow-sm);
 }
 
-/* --- Phase 4: Mobile Responsiveness --- */
+/* --- Phase 4: Mobile Responsiveness (Updated) --- */
 .mobile-header { display: none; }
 .hamburger { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-primary); }
 
 @media (max-width: 768px) {
-    body { grid-template-columns: 1fr; }
+    body { 
+        grid-template-columns: 1fr;
+        min-height: auto; /* Remove the 100vh forcing */
+    }
     
     .sidebar {
         position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
@@ -445,12 +448,94 @@ input[type="text"]:focus, textarea:focus, select:focus {
     
     .mobile-header {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 16px 24px; background: white; border-bottom: 1px solid var(--border-color);
+        padding: 16px; background: white; border-bottom: 1px solid var(--border-color);
         position: sticky; top: 0; z-index: 50;
     }
     
-    .main-content { padding: 24px; }
-    .page-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+    /* Aggressively reduce main content spacing */
+    .main-content { 
+        padding: 20px 16px !important; 
+        margin-top: 0 !important;
+    }
+    
+    /* Remove h1 top margin on mobile */
+    .main-content h1 { 
+        margin-top: 0 !important;
+        margin-bottom: 16px !important;
+        font-size: 22px;
+    }
+    
+    .page-header { 
+        flex-direction: column; 
+        align-items: flex-start; 
+        gap: 12px; 
+        margin-bottom: 16px !important;
+    }
+    
     .search-input-group { flex-direction: column; }
     .review-actions { flex-wrap: wrap; }
+}
+
+/* --- Login Page Styles (Robust Centering) --- */
+
+/* Force the body to be a flex container that centers everything */
+body.login-body {
+    display: flex !important; /* The !important ensures it kills the global grid */
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--bg-body);
+}
+
+/* This wrapper just adds padding around the card */
+.login-page {
+    width: 100%;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.login-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 40px 32px;
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+
+.login-icon {
+    font-size: 32px;
+    margin-bottom: 16px;
+}
+
+.login-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+    letter-spacing: -0.02em;
+}
+
+.login-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    line-height: 1.5;
+}
+
+.login-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.login-links .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 15px;
 }
