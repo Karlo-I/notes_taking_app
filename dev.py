@@ -21,10 +21,28 @@ dev_auth_bp = Blueprint("dev_auth", __name__)
 def dev_login():
     if request.method == "GET":
         return """
-            <form method="post">
-                <input name="display_name" placeholder="e.g. test-user-1">
-                <button type="submit">Log in</button>
-            </form>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Dev Login</title>
+            <link rel="stylesheet" href="/static/css/style.css">
+        </head>
+        <body class="login-body">
+            <div class="login-page">
+                <div class="login-card">
+                    <div class="login-icon">🛠️</div>
+                    <h1 class="login-title">Developer Login</h1>
+                    <p class="login-subtitle">Enter a display name to simulate a user session.</p>
+                    <form method="post" class="login-links">
+                        <input type="text" name="display_name" class="form-control" placeholder="e.g. test-user-1" required autofocus style="text-align: center;">
+                        <button type="submit" class="btn">Log in</button>
+                    </form>
+                </div>
+            </div>
+        </body>
+        </html>
         """
 
     display_name = request.form["display_name"]
