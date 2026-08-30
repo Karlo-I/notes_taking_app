@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Notes App{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=3">
+    <link rel="stylesheet" href="/static/css/style.css?v=4">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 </head>
 <body>
@@ -16,11 +16,17 @@
         <a href="/notes/search">🔍 Search</a>
         
         {% if session.get('user_id') %}
-            <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border-color);">
-                <a href="/logout" style="color: var(--danger);">Log out</a>
+            <div class="sidebar-footer">
+                <a href="/logout" class="link-danger">Log out</a>
             </div>
         {% endif %}
     </aside>
+
+    <div class="mobile-header">
+        <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+        <span style="font-weight: 600; font-size: 15px;">My Knowledge Base</span>
+        <div style="width: 24px;"></div> <!-- Spacer for centering -->
+    </div>
 
     <main class="main-content">
         {% block content %}{% endblock %}
@@ -30,8 +36,8 @@
     <div id="global-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modal-title" style="margin:0; font-size: 16px; font-weight: 600;">Details</h3>
-                <button class="close-btn" onclick="closeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+                <h3 id="modal-title" style="margin:0;">Details</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body" id="modal-body"></div>
             <div class="modal-footer" id="modal-footer"></div>
@@ -53,6 +59,15 @@
         document.getElementById('global-modal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            const sidebar = document.querySelector('.sidebar');
+            const hamburger = document.querySelector('.hamburger');
+            if (window.innerWidth <= 768 && sidebar.classList.contains('open') && !sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
         
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeModal();
@@ -64,11 +79,11 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 
-                const body = '<div style="white-space: pre-wrap; font-size: 15px; line-height: 1.6;">' + data.content + '</div>';
+                const body = '<div class="modal-note-content">' + data.content + '</div>';
                 
                 let footer = '';
-                footer += `<form method="post" action="/notes/${data.id}/delete" style="margin-right: auto;">
-                    <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
+                footer += `<form method="post" action="/notes/${data.id}/delete" class="modal-footer-left">
+                    <button type="submit" class="btn btn-danger">Delete</button>
                 </form>`;
 
                 if (data.status === 'under_review') {
@@ -87,19 +102,16 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 
-                const body = '<div style="white-space: pre-line; font-family: serif; line-height: 1.5;">' + data.content + '</div>';
+                const body = '<div class="modal-output-content">' + data.content + '</div>';
                 
                 let footer = '';
 
-                // Delete button (pushed to the far left)
-                footer += `<form method="post" action="/outputs/${data.id}/delete" style="margin-right: auto;">
-                    <button type="submit" class="btn" style="background: var(--danger); color: white;">Delete</button>
+                footer += `<form method="post" action="/outputs/${data.id}/delete" class="modal-footer-left">
+                    <button type="submit" class="btn btn-danger">Delete</button>
                 </form>`;
 
-                // Download PDF button
-                footer += `<a href="/outputs/${data.id}/pdf" class="btn btn-secondary" style="margin-right: 8px;">Download PDF</a>`;
+                footer += `<a href="/outputs/${data.id}/pdf" class="btn btn-secondary">Download PDF</a>`;
 
-                // Regenerate button
                 footer += `<form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;">
                     <button type="submit" class="btn">Regenerate</button>
                 </form>`;
@@ -110,17 +122,14 @@
             }
         }
 
-        // Helper function for note links inside outputs
         window.openNoteFromOutput = function(noteId) {
             loadNoteDetails(noteId);
         };
 
-        // --- New Note Modal ---
         function openNewNoteModal() {
             const body = `
                 <form id="new-note-form" onsubmit="submitNewNote(event)">
-                    <textarea name="content" placeholder="Write your note..." required 
-                        style="width: 100%; min-height: 150px; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                    <textarea name="content" class="form-control" rows="6" placeholder="Write your note..." required></textarea>
                 </form>
             `;
             const footer = `
@@ -132,55 +141,35 @@
 
         async function submitNewNote(event) {
             event.preventDefault();
-            
             const form = document.getElementById('new-note-form');
-            if (!form) {
-                alert("Error: Form not found");
-                return;
-            }
+            if (!form) { alert("Error: Form not found"); return; }
             
             const formData = new FormData(form);
-            
             const submitBtn = document.querySelector('#modal-footer button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerText = 'Saving...';
-                submitBtn.disabled = true;
-            }
+            
+            if (submitBtn) { submitBtn.innerText = 'Saving...'; submitBtn.disabled = true; }
 
             try {
-                const res = await fetch('/notes/new', { 
-                    method: 'POST', 
-                    body: formData 
-                });
-                
+                const res = await fetch('/notes/new', { method: 'POST', body: formData });
                 if (res.ok) {
                     closeModal();
                     window.location.href = '/notes';
                 } else {
                     const errorText = await res.text();
                     alert("Error: " + errorText);
-                    if (submitBtn) {
-                        submitBtn.innerText = 'Submit Note';
-                        submitBtn.disabled = false;
-                    }
+                    if (submitBtn) { submitBtn.innerText = 'Submit Note'; submitBtn.disabled = false; }
                 }
             } catch (error) {
                 alert("Error creating note: " + error.message);
-                if (submitBtn) {
-                    submitBtn.innerText = 'Submit Note';
-                    submitBtn.disabled = false;
-                }
+                if (submitBtn) { submitBtn.innerText = 'Submit Note'; submitBtn.disabled = false; }
             }
         }
 
-        // --- New Output Modal ---
         function openNewOutputModal() {
             const body = `
                 <form id="new-output-form" onsubmit="submitNewOutput(event)">
-                    <textarea name="topic_query" placeholder="e.g. What have I learned about FATCA compliance?" required 
-                        style="width: 100%; min-height: 150px; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit; margin-bottom: 16px;"></textarea>
-                    
-                    <select name="output_type" style="width: 100%; padding: 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; background: white; font-family: inherit;">
+                    <textarea name="topic_query" class="form-control mb-4" rows="4" placeholder="e.g. What have I learned about FATCA compliance?" required></textarea>
+                    <select name="output_type" class="form-control">
                         <option value="qna">Q&A Document</option>
                         <option value="narration">Narration Script</option>
                         <option value="summary">Topic Summary</option>
@@ -196,50 +185,36 @@
 
         async function submitNewOutput(event) {
             event.preventDefault();
-            
             const form = document.getElementById('new-output-form');
             if (!form) return;
             
             const formData = new FormData(form);
-            
             const submitBtn = document.querySelector('#modal-footer button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerText = 'Generating...';
-                submitBtn.disabled = true;
-            }
+            
+            if (submitBtn) { submitBtn.innerText = 'Generating...'; submitBtn.disabled = true; }
 
             try {
                 const res = await fetch('/outputs/new', { 
                     method: 'POST', 
                     body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 
                 if (res.ok) {
-                    const data = await res.json();
                     closeModal();
                     window.location.href = '/outputs';
                 } else {
                     const errorData = await res.json().catch(() => ({}));
                     const errorText = errorData.error || await res.text();
                     alert("Server error: " + errorText);
-                    if (submitBtn) {
-                        submitBtn.innerText = 'Generate';
-                        submitBtn.disabled = false;
-                    }
+                    if (submitBtn) { submitBtn.innerText = 'Generate'; submitBtn.disabled = false; }
                 }
             } catch (error) {
                 alert("Error: " + error.message);
-                if (submitBtn) {
-                    submitBtn.innerText = 'Generate';
-                    submitBtn.disabled = false;
-                }
+                if (submitBtn) { submitBtn.innerText = 'Generate'; submitBtn.disabled = false; }
             }
         }
 
-        // Event delegation for note links in outputs
         document.addEventListener('click', function(e) {
             if (e.target.matches('[data-note-link]')) {
                 e.preventDefault();
@@ -247,8 +222,6 @@
                 loadNoteDetails(noteId);
             }
         });
-
     </script>
-
 </body>
 </html>

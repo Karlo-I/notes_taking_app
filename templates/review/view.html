@@ -3,41 +3,41 @@
 {% block title %}Review Note{% endblock %}
 
 {% block content %}
-    <div style="max-width: 800px;">
+    <div class="review-container">
         <h1 style="margin-bottom: 24px;">Review Note</h1>
         
         <!-- Note Card -->
-        <div class="card" style="margin-bottom: 24px;">
+        <div class="review-note-card">
             <div class="card-header">
                 <span class="badge">{{ note[1].upper() }}</span>
                 <span class="meta">Classified as: {{ note[1] }}</span>
             </div>
             <textarea id="note-content" 
                 disabled
-                style="width: 100%; min-height: 120px; padding: 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; margin-top: 12px; font-family: inherit; resize: vertical; background-color: #f9fafb;"
+                class="review-note-textarea"
             >{{ note[2] }}</textarea>
             
-            <div style="margin-top: 16px; display: flex; gap: 12px;">
+            <div class="review-actions">
                 <button onclick="editNote()" class="btn btn-secondary">Edit</button>
                 <button onclick="saveNote('{{ note[0] }}')" class="btn">Save</button>
-                <button onclick="cancelReview('{{ note[0] }}')" class="btn btn-secondary" style="color: var(--danger);">Delete</button>
+                <button onclick="cancelReview('{{ note[0] }}')" class="btn btn-danger">Delete</button>
             </div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 12px;">
+            <p class="review-helper-text">
                 Click Edit to change the wording. Approve & Save stores whatever's currently shown above and ends the review. Cancel deletes this note entirely.
             </p>
         </div>
         
         <!-- Conversation History -->
         {% if messages %}
-            <div class="card" style="margin-bottom: 24px;">
+            <div class="dialogue-section">
                 <h3 style="margin-bottom: 16px; font-size: 16px;">Conversation History</h3>
-                <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="dialogue-list">
                     {% for msg in messages %}
-                        <div style="padding: 12px 16px; border-radius: 8px; {% if msg[0] == 'critic' %}background: #f1f5f9;{% else %}background: #e0e7ff; margin-left: 40px;{% endif %}">
-                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 0px; {% if msg[0] == 'critic' %}color: var(--text-secondary);{% else %}color: var(--primary);{% endif %}">
+                        <div class="dialogue-turn {% if msg[0] == 'critic' %}dialogue-critic{% else %}dialogue-user{% endif %}">
+                            <div class="dialogue-role">
                                 {{ msg[0].upper() }}
                             </div>
-                            <div style="white-space: pre-line; line-height: 1.5; font-size: 14px;">
+                            <div class="dialogue-content">
                                 {{ msg[1] | safe }}
                             </div>
                         </div>
@@ -47,13 +47,14 @@
         {% endif %}
         
         <!-- Reply Form -->
-        <div class="card">
+        <div class="reply-section">
             <h3 style="margin-bottom: 16px; font-size: 16px;">Reply to Critic</h3>
             <textarea id="reply-input" 
+                class="form-control"
+                rows="4"
                 placeholder="Reply to the critic..." 
-                style="width: 100%; min-height: 80px; padding: 12px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; font-family: inherit;"
             ></textarea>
-            <button onclick="sendReply('{{ note[0] }}')" class="btn" style="margin-top: 12px;">Send Reply</button>
+            <button onclick="sendReply('{{ note[0] }}')" class="btn" style="margin-top: 16px;">Send Reply</button>
         </div>
     </div>
     

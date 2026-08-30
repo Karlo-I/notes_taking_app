@@ -61,6 +61,7 @@ htmlcov/
 
 # Logs
 *.log
+app.log
 
 # Personal files
 notes/
