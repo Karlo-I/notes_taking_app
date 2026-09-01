@@ -17,6 +17,7 @@ from decorators import require_login
 from embeddings import get_embedding
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 from integration import decide as integration_decide
+from topics import extract_and_save_topics
 
 review_bp = Blueprint("review", __name__, url_prefix="/notes")
 
@@ -365,5 +366,8 @@ def approve(note_id):
     if row:
         embedding = embed_and_store(note_id, row[0])
         run_integration(note_id, row[0], embedding)
+
+        # Extract and save topics for this note
+        extract_and_save_topics(session["user_id"], note_id, row[0]) 
 
     return redirect(url_for("notes.view", note_id=note_id))

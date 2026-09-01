@@ -180,3 +180,46 @@ GRANT USAGE ON SCHEMA public TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
+
+
+-- ---------------------------------------------------------------------------
+-- Database and Topic Extractin Engine
+-- ---------------------------------------------------------------------------
+
+-- 1. Create the topics table
+CREATE TABLE topics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, name) -- Prevents duplicate topics for the same user
+);
+
+-- 2. Create the junction table linking notes to topics
+CREATE TABLE note_topics (
+    note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    PRIMARY KEY (note_id, topic_id)
+);
+
+-- 3. Enable Row Level Security
+ALTER TABLE topics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE note_topics ENABLE ROW LEVEL SECURITY;
+
+-- 4. Create RLS Policies
+CREATE POLICY topics_isolation ON topics
+    USING (user_id = current_setting('app.current_user_id', true)::uuid);
+
+CREATE POLICY note_topics_isolation ON note_topics
+    USING (note_id IN (
+        SELECT id FROM notes WHERE user_id = current_setting('app.current_user_id', true)::uuid
+    ));
+
+-- 5. Tighten the existing note_links RLS policy (as discussed previously)
+DROP POLICY IF EXISTS note_links_isolation ON note_links;
+CREATE POLICY note_links_isolation ON note_links
+    USING (
+        note_id IN (SELECT id FROM notes WHERE user_id = current_setting('app.current_user_id', true)::uuid)
+        AND
+        related_note_id IN (SELECT id FROM notes WHERE user_id = current_setting('app.current_user_id', true)::uuid)
+    );
