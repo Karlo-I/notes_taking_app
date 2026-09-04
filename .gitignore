@@ -66,3 +66,7 @@ app.log
 # Personal files
 notes/
 readme_old/
+
+# React stuff
+dashboard/node_modules/
+dashboard/dist/
