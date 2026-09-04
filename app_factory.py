@@ -7,12 +7,20 @@ this security-sensitive shouldn't ride on Flask's own debug flag.
 import os
 from dotenv import load_dotenv
 from flask import Flask, redirect, request, session, url_for
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from a2wsgi import ASGIMiddleware
+from analytics_api import analytics_api
 
 # Force load .env file explicitly, preventing reloader quirks
 load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+
+    # Mount FastAPI under /api/analytics
+    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+        '/api/analytics': ASGIMiddleware(analytics_api)
+    })
 
     @app.after_request
     def prevent_caching(response):

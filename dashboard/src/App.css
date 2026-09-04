@@ -1,0 +1,85 @@
+/* Force GitHub's exact dark mode colors */
+.react-calendar-heatmap rect.color-empty {
+  fill: #21262d !important;
+}
+
+.react-calendar-heatmap rect.color-scale-1 { fill: #0e4429 !important; }
+.react-calendar-heatmap rect.color-scale-2 { fill: #006d32 !important; }
+.react-calendar-heatmap rect.color-scale-3 { fill: #26a641 !important; }
+.react-calendar-heatmap rect.color-scale-4 { fill: #39d353 !important; }
+
+/* 1. FIX WIDTH: Force a minimum width so it stops jumping around */
+.react-calendar-heatmap {
+  width: 100% !important;
+  min-width: 800px !important; /* This locks the size */
+}
+
+/* Make labels white/light gray */
+.react-calendar-heatmap text {
+  fill: #c9d1d9 !important; 
+  font-size: 10px !important;
+  font-weight: 500;
+}
+
+/* 2. FIX CUTOFF: Remove the negative transform that pushed text up */
+/* We will add padding in the HTML instead */
+
+/* Shift the day labels (Mon, Wed) left slightly */
+.react-calendar-heatmap-weekday-labels text {
+  transform: translateX(-4px);
+}
+
+.react-calendar-heatmap rect:hover {
+  stroke: #8b949e !important;
+  stroke-width: 1px !important;
+}
+
+/* Legend styling */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.legend-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* Year Selector Layout */
+.year-selector-container {
+  height: 130px; 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-left: 16px;
+  padding-top: 10px;
+}
+
+.year-button {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: right;
+  width: 60px;
+}
+
+.year-button.active {
+  background: #1f6feb;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.year-button:hover:not(.active) {
+  color: #c9d1d9;
+}
