@@ -98,12 +98,12 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 
 ## 9. Tech stack
 
-- Backend: Python / Flask (Blueprints & App Factory pattern)
-- DB: PostgreSQL + pgvector, run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
-- Auth: OAuth 2.0 (Google/GitHub) via Authlib
-- AI: Claude Haiku-class model for critic + integration; stronger model optional for draft prose
-- Frontend: Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
-- DevOps: Custom `start.sh` background script, Docker Compose for local PostgreSQL
+- **Frontend:** React, TypeScript, Vite, Recharts, react-calendar-heatmap, Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
+- **Backend:** Python, Flask (Blueprints & App Factory pattern), FastAPI
+- **Database:** PostgreSQL (with pgvector), run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
+- **Auth:** OAuth 2.0 (Google/GitHub) via Authlib
+- **AI:** Claude Haiku-class model for critic + integration; stronger model optional for draft prose
+- **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL
 
 ## 10. What this deliberately is not
 
@@ -123,6 +123,13 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 - Advanced Retrieval Pipeline: Output generation uses a 3-stage retrieval process: 1. LLM identifies relevant `topics` from the query, 2. Vector search is strictly filtered to those topics (ensuring umbrella concepts like "Chapter 3" are found even if the query only says "871m"), 3. LLM re-ranking filters out noisy snippets before the final generation.
 - Topic Extraction: Runs automatically in `review.py` after a note is approved. Uses a cheap Haiku call to extract 1-3 broad topics and links them in the `note_topics` table.
 - Re-ranking: Uses a cheap Haiku call to read the first 250 characters of up to 12 retrieved notes, returning only the top 8 most relevant indices to save context window space and prevent hallucination.
+- Dashboard: The dashboard provides insights into your knowledge base and thinking process:
+    - **Resurfaced Thought:** Randomly surfaces an approved note from your database to spark reflection.
+    - **Activity Heatmap:** A GitHub-style contribution graph showing your note creation history over time.
+    - **Knowledge Composition:** A donut chart visualizing the breakdown of your notes (Claims, Reflections, Questions).
+    - **Thinking Quality Metrics:** Tracks your critique efficiency, including Approval Rate, Average Dialogue Turns, and Average Tokens used per critique session.
+
+    *Note: The dashboard uses a FastAPI bridge to query the database. Aggregated metrics (like the heatmap) use an unscoped connection to see across all users, while specific data respects Row Level Security (RLS).*
 
 ## 13. Potential Future Adjustments to the Set Parameters
 
@@ -153,3 +160,21 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 - When to change it: As your database grows significantly.
 - The Risk: "Noise Floor." Right now, 0.20 is very loose, which is great for finding everything. But when you have 1,000 notes, a 0.20 threshold will pull in hundreds of completely irrelevant notes, crashing your re-ranker or blowing up your token costs.
 - The Fix: You will likely need to tighten this to 0.35 or 0.45 as your DB grows. Because your Topic Filtering (Phase 4) is now doing the heavy lifting for broad recall, you can afford to make the raw vector search stricter.
+
+## 14. Running the Application
+
+You need to run two separate servers: one for the backend and one for the frontend dashboard.
+
+1. Start the Backend (Flask + FastAPI)
+- Open your first terminal, activate your virtual environment, and run the Flask server:
+    ```bash
+    source .venv/bin/activate
+    python wsgi.py
+- The API will be available at http://127.0.0.1:5000
+
+2. Start the Frontend Dashboard
+- Open a second terminal, navigate to the dashboard folder, and start the React development server:
+    cd dashboard
+    npm install # (Only needed the first time)
+    npm run dev
+- The dashboard will be available at http://localhost:5173
