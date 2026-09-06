@@ -83,3 +83,27 @@
 .year-button:hover:not(.active) {
   color: #c9d1d9;
 }
+
+/* Responsive grid for dashboard */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+}
+
+.dashboard-grid .heatmap-card {
+  grid-column: span 8;
+}
+
+.dashboard-grid .donut-card {
+  grid-column: span 4;
+}
+
+/* Stack vertically on narrow screens (under 900px) */
+@media (max-width: 900px) {
+  .dashboard-grid .heatmap-card,
+  .dashboard-grid .donut-card {
+    grid-column: span 12;
+  }
+}
+

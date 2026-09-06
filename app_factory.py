@@ -5,8 +5,9 @@ this security-sensitive shouldn't ride on Flask's own debug flag.
 """
 
 import os
+
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, session, url_for
+from flask import Flask, redirect, request, session, url_for, send_from_directory
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from a2wsgi import ASGIMiddleware
 from analytics_api import analytics_api
@@ -109,5 +110,42 @@ def create_app():
     def logout():
         session.clear()
         return redirect(url_for("index"))
+    
+    from pathlib import Path
+
+    # --- React Dashboard Connection ---
+    @app.route("/dashboard")
+    def dashboard():
+        import re
+        from flask import render_template
+        
+        BASE_DIR = Path(__file__).resolve().parent
+        dist_index = BASE_DIR / 'dashboard' / 'dist' / 'index.html'
+        
+        # Read the built index.html to find the correct JS and CSS filenames
+        with open(dist_index, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        # Extract the filenames using regex
+        script_match = re.search(r'src="(/assets/[^"]+\.js)"', content)
+        css_match = re.search(r'href="(/assets/[^"]+\.css)"', content)
+        
+        script_src = script_match.group(1) if script_match else ''
+        css_href = css_match.group(1) if css_match else ''
+        
+        # Render the wrapper template which includes the sidebar
+        return render_template('dashboard.html', script_src=script_src, css_href=css_href)
+
+    # Keep the assets route so the JS/CSS files can be found
+    @app.route("/assets/<path:filename>")
+    def serve_dashboard_assets(filename):
+        from flask import send_file, abort
+        BASE_DIR = Path(__file__).resolve().parent
+        file_path = BASE_DIR / 'dashboard' / 'dist' / 'assets' / filename 
+        
+        if file_path.exists():
+            return send_file(file_path)
+        abort(404)
+    # ---------------------------------------
 
     return app

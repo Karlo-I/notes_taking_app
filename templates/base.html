@@ -11,6 +11,7 @@
 
     <aside class="sidebar">
         <h2>My Knowledge Base</h2>
+        <a href="/dashboard" {% if request.path == '/dashboard' %}class="active"{% endif %}>📊 Dashboard</a>
         <a href="/notes" {% if request.path.startswith('/notes') %}class="active"{% endif %}>📝 Notes</a>
         <a href="/outputs" {% if request.path.startswith('/outputs') %}class="active"{% endif %}>✨ Outputs</a>
         <a href="/notes/search">🔍 Search</a>
