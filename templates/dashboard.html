@@ -6,6 +6,11 @@
 <!-- This is where React will mount -->
 <div id="root" style="width: 100%; padding: 20px; box-sizing: border-box;"></div>
 
+<!-- Pass the current user's ID to React -->
+<script>
+    window.CURRENT_USER_ID = {{ session['user_id'] | tojson }};
+</script>
+
 <!-- Load the React CSS and JS dynamically -->
 {% if css_href %}
     <link rel="stylesheet" href="{{ css_href }}">

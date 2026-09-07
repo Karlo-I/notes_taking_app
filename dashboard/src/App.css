@@ -67,6 +67,7 @@
   color: #8b949e;
   padding: 4px 8px;
   border-radius: 6px;
+  align-items: center;
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
@@ -95,14 +96,14 @@
   grid-column: span 8;
 }
 
-.dashboard-grid .donut-card {
+.dashboard-grid .chart-card {
   grid-column: span 4;
 }
 
-/* Stack vertically on narrow screens (under 900px) */
+/* Stack vertically on narrow screens */
 @media (max-width: 900px) {
   .dashboard-grid .heatmap-card,
-  .dashboard-grid .donut-card {
+  .dashboard-grid .chart-card {
     grid-column: span 12;
   }
 }

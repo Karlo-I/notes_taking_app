@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% endblock %}
+
+{% block content %}
+    <h1>Search Knowledge Base</h1>
+    
+    <form class="search-form" style="position: relative;" onsubmit="return false;">
+        <div class="search-input-group">
+            <input 
+                type="text" 
+                name="q" 
+                id="search-input"
+                class="form-control"
+                placeholder="Search notes and outputs..." 
+                value="{{ query or '' }}"
+                autocomplete="off"
+                autofocus
+            >
+            <button type="button" class="btn" onclick="performSearch()">Search</button>
+        </div>
+    </form>
+    
+    <!-- Results section - updates automatically as you type -->
+    <div id="search-results" style="margin-top: 32px;">
+        {% if query %}
+            <p class="text-secondary mb-4">
+                Found {{ notes|length }} note{% if notes|length != 1 %}s{% endif %} and {{ outputs|length }} output{% if outputs|length != 1 %}s{% endif %} for "{{ query }}"
+            </p>
+            
+            {% if notes %}
+                <h2 style="margin-top: 32px; font-size: 18px;">Notes</h2>
+                {% for note in notes %}
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <span class="badge">{{ note[1] }}</span>
+                                <span class="meta">{{ note[4].strftime('%Y-%m-%d %H:%M') if note[4] else '' }}</span>
+                            </div>
+                        </div>
+                        <p class="card-excerpt">
+                            {{ note[2][:200] }}{% if note[2]|length > 200 %}...{% endif %}
+                        </p>
+                        <div class="card-actions">
+                            <button onclick="loadNoteDetails('{{ note[0] }}')" class="btn btn-secondary btn-sm">View Details</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if outputs %}
+                <h2 style="margin-top: 32px; font-size: 18px;">Outputs</h2>
+                {% for output in outputs %}
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <span class="badge">{{ output[1] }}</span>
+                                <span class="meta">{{ output[3].strftime('%Y-%m-%d %H:%M') if output[3] else '' }}</span>
+                            </div>
+                        </div>
+                        <p class="card-excerpt">
+                            {{ output[2][:200] }}{% if output[2]|length > 200 %}...{% endif %}
+                        </p>
+                        <div class="card-actions">
+                            <button onclick="loadOutputDetails('{{ output[0] }}')" class="btn btn-secondary btn-sm">View Output</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if not notes and not outputs %}
+                <div class="card empty-state">
+                    <p>No results found matching "{{ query }}".</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+<script>
+const searchInput = document.getElementById('search-input');
+const resultsDiv = document.getElementById('search-results');
+let debounceTimer = null;
+
+// Trigger search on page load if there's already text in the box
+if (searchInput.value.trim().length >= 2) {
+    performSearch();
+}
+
+searchInput.addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+    
+    // Clear previous timer
+    clearTimeout(debounceTimer);
+    
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    
+    // Debounce: wait 300ms after user stops typing
+    debounceTimer = setTimeout(() => {
+        performSearch();
+    }, 300);
+});
+
+searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); 
+        performSearch();    
+    }
+});
+
+async function performSearch() {
+    const query = searchInput.value.trim();
+    
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    
+    try {
+        // Show loading state
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #8b949e;">Searching...</div>';
+        
+        const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error('Search failed');
+        
+        const data = await response.json();
+        displayFullResults(data);
+    } catch (error) {
+        console.error('Search error:', error);
+        resultsDiv.innerHTML = '<div class="card empty-state"><p>Error performing search. Please try again.</p></div>';
+    }
+}
+
+function displayFullResults(data) {
+    const totalNotes = data.notes.length;
+    const totalOutputs = data.outputs.length;
+    const total = totalNotes + totalOutputs;
+    
+    let html = `<p class="text-secondary mb-4">Found ${totalNotes} note${totalNotes !== 1 ? 's' : ''} and ${totalOutputs} output${totalOutputs !== 1 ? 's' : ''}</p>`;
+    
+    // Notes section
+    if (data.notes.length > 0) {
+        html += '<h2 style="margin-top: 32px; font-size: 18px;">Notes</h2>';
+        data.notes.forEach(note => {
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <span class="badge">${note.type}</span>
+                            <span class="meta">${note.created_at}</span>
+                        </div>
+                    </div>
+                    <p class="card-excerpt">
+                        ${note.content}${note.content.length >= 150 ? '...' : ''}
+                    </p>
+                    <div class="card-actions">
+                        <button onclick="loadNoteDetails('${note.id}')" class="btn btn-secondary btn-sm">View Details</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    // Outputs section
+    if (data.outputs.length > 0) {
+        html += '<h2 style="margin-top: 32px; font-size: 18px;">Outputs</h2>';
+        data.outputs.forEach(output => {
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <span class="badge">${output.type}</span>
+                            <span class="meta">${output.created_at}</span>
+                        </div>
+                    </div>
+                    <p class="card-excerpt">
+                        ${output.content}${output.content.length >= 150 ? '...' : ''}
+                    </p>
+                    <div class="card-actions">
+                        <button onclick="loadOutputDetails('${output.id}')" class="btn btn-secondary btn-sm">View Output</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    // Empty state
+    if (total === 0) {
+        html += '<div class="card empty-state"><p>No results found.</p></div>';
+    }
+    
+    resultsDiv.innerHTML = html;
+}
+
+// Force cursor to the end of the text when clicking the search box
+searchInput.addEventListener('mousedown', function(e) {
+    // Prevent the default click behavior (which places cursor at click position)
+    e.preventDefault();
+    
+    // Focus the input
+    this.focus();
+    
+    // Move cursor to the end
+    const length = this.value.length;
+    this.setSelectionRange(length, length);
+});
+
+</script>
+{% endblock %}

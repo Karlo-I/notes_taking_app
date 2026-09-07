@@ -58,10 +58,13 @@ def create_app():
 
     app.register_blueprint(review_bp)
 
-    # Outputs blueprint
     from outputs import outputs_bp
 
     app.register_blueprint(outputs_bp)
+
+    from search import search_bp
+
+    app.register_blueprint(search_bp)
 
     # Conditionally register hidden admin blueprint
     if os.environ.get("ADMIN_ENABLED") == "true":
