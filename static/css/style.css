@@ -51,6 +51,9 @@ main.main-content:has(h1:contains("Knowledge Base Analytics")) {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    height: 100vh;       /* Locks height to the screen size */
+    position: sticky;    /* Keeps it in place while you scroll */
+    top: 0;              /* Anchors it to the very top */
 }
 
 .sidebar h2 {
@@ -88,10 +91,12 @@ main.main-content:has(h1:contains("Knowledge Base Analytics")) {
 
 /* --- Main Content --- */
 .main-content {
-    padding: 40px 48px;
+    padding: 40px 48px 6px 48px;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 h1, h2, h3 {
@@ -502,4 +507,45 @@ body.login-body {
     justify-content: center;
     padding: 10px 16px;
     font-size: 15px;
+}
+
+/* --- Global Footer --- */
+.app-footer {
+    margin-top: auto;
+    padding: 20px 20px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.footer-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.footer-statement {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 1px;
+}
+
+.footer-social {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 1px;
+}
+
+.footer-social a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.footer-social a:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
+}
+
+.footer-copyright {
+    font-size: 10px;  /* Changed from 13px to match */
+    color: var(--text-secondary);
 }

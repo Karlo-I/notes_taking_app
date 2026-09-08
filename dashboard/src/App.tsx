@@ -103,7 +103,7 @@ function App() {
           <div style={{ fontSize: '12px', color: '#8b949e', marginTop: '4px' }}>{yearNotes} notes & {yearOutputs} outputs in {selectedYear}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1, paddingTop: '10px', overflowX: 'auto' }}>
+          <div style={{ flex: 1, paddingTop: '8px', overflowX: 'auto' }}>
             <CalendarHeatmap
               startDate={new Date(`${selectedYear}-01-01`)}
               endDate={new Date(`${selectedYear}-12-31`)}
