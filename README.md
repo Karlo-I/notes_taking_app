@@ -4,7 +4,7 @@
 
 **AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic). All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
 
-**Last updated:** August 28, 2026
+**Last updated:** September 08, 2026
 
 ---
 
@@ -93,12 +93,13 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 8. Background run script (start.sh) & Docker auto-start configuration
 9. UI/UX Overhaul (Sidebar layout, Jinja2 templates, premium CSS)
 10. Glassmorphism Modal system (replacing separate detail pages)
-11. Global hybrid search (keyword + vector) in the navbar
-12. Mobile-responsive CSS tweaks
+11. Global Live Search (autocomplete across Notes & Outputs)
+12. Holistic Analytics Dashboard overhaul (user-scoped metrics, combined heatmap, dual composition charts)
+13. Mobile-responsive CSS tweaks & Sticky Sidebar fix
 
 ## 9. Tech stack
 
-- **Frontend:** React, TypeScript, Vite, Recharts, react-calendar-heatmap, Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
+- **Frontend:** React, TypeScript, Vite, Recharts, react-calendar-heatmap, Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals/search), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
 - **Backend:** Python, Flask (Blueprints & App Factory pattern), FastAPI
 - **Database:** PostgreSQL (with pgvector), run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
 - **Auth:** OAuth 2.0 (Google/GitHub) via Authlib
@@ -116,65 +117,62 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 
 ## 12. Implementation Notes & Recent Additions
 
-- Modals & JSON: The `notes.py` and `outputs.py` detail routes return raw JSON when queried with `?format=json`. This powers the frontend modal system without requiring a separate API blueprint.
-- Embeddings: Notes are only embedded into the vector database `after` they are approved. Drafts and notes under review are never searchable.
-- Versioning: When a note is merged or its wording is changed during the review process, the original content is preserved in the `note_versions` table. Nothing is ever permanently lost.
-- Docker & Background Processes: The app and database are decoupled. `start.sh` handles spinning up Docker and the Flask app in the background. Docker Desktop is configured to auto-start on Mac login.
-- Advanced Retrieval Pipeline: Output generation uses a 3-stage retrieval process: 1. LLM identifies relevant `topics` from the query, 2. Vector search is strictly filtered to those topics (ensuring umbrella concepts like "Chapter 3" are found even if the query only says "871m"), 3. LLM re-ranking filters out noisy snippets before the final generation.
-- Topic Extraction: Runs automatically in `review.py` after a note is approved. Uses a cheap Haiku call to extract 1-3 broad topics and links them in the `note_topics` table.
-- Re-ranking: Uses a cheap Haiku call to read the first 250 characters of up to 12 retrieved notes, returning only the top 8 most relevant indices to save context window space and prevent hallucination.
-- Dashboard: The dashboard provides insights into your knowledge base and thinking process:
-    - **Resurfaced Thought:** Randomly surfaces an approved note from your database to spark reflection.
-    - **Activity Heatmap:** A GitHub-style contribution graph showing your note creation history over time.
-    - **Knowledge Composition:** A donut chart visualizing the breakdown of your notes (Claims, Reflections, Questions).
-    - **Thinking Quality Metrics:** Tracks your critique efficiency, including Approval Rate, Average Dialogue Turns, and Average Tokens used per critique session.
-
-    *Note: The dashboard uses a FastAPI bridge to query the database. Aggregated metrics (like the heatmap) use an unscoped connection to see across all users, while specific data respects Row Level Security (RLS).*
+- **Modals & JSON:** The `notes.py` and `outputs.py` detail routes return raw JSON when queried with `?format=json`. This powers the frontend modal system without requiring a separate API blueprint.
+- **Embeddings:** Notes are only embedded into the vector database *after* they are approved. Drafts and notes under review are never searchable.
+- **Versioning:** When a note is merged or its wording is changed during the review process, the original content is preserved in the `note_versions` table. Nothing is ever permanently lost.
+- **Docker & Background Processes:** The app and database are decoupled. `start.sh` handles spinning up Docker and the Flask app in the background. Docker Desktop is configured to auto-start on Mac login.
+- **Advanced Retrieval Pipeline:** Output generation uses a 3-stage retrieval process: 1. LLM identifies relevant `topics` from the query, 2. Vector search is strictly filtered to those topics (ensuring umbrella concepts like "Chapter 3" are found even if the query only says "871m"), 3. LLM re-ranking filters out noisy snippets before the final generation.
+- **Topic Extraction:** Runs automatically in `review.py` after a note is approved. Uses a cheap Haiku call to extract 1-3 broad topics and links them in the `note_topics` table.
+- **Re-ranking:** Uses a cheap Haiku call to read the first 250 characters of up to 12 retrieved notes, returning only the top 8 most relevant indices to save context window space and prevent hallucination.
+- **Global Live Search:** A dedicated `/search` route with a debounced, live-autocomplete dropdown that queries both Notes and Outputs instantly as you type, complete with Enter-key support and precise cursor positioning.
+- **Holistic Analytics Dashboard:** Completely overhauled to provide a unified, user-scoped view of the knowledge base (enforcing strict data isolation via FastAPI). Features include:
+  - **Productivity:** Separate, clearly delineated counts for Total Notes and Total Outputs.
+  - **Quality & Cost:** Notes Approval Rate, Total Tokens Used, and Average Tokens per item (Notes vs. Outputs).
+  - **Activity Heatmap:** A combined GitHub-style graph that distinctly tracks and tooltips both notes and outputs per day (e.g., "4 notes & 2 outputs on Sep 2").
+  - **Composition Charts:** Side-by-side donut charts breaking down Notes (Claims, Reflections, Questions) and Outputs (Q&A, Narration, Summary).
+  - **Layout:** Optimized vertical spacing and a sticky sidebar to ensure the dashboard and navigation remain fully visible without excessive scrolling.
+- **Global Footer:** Added a clean, centered footer across all pages featuring a core philosophy statement, social links, and copyright, with optimized bottom-edge spacing.
 
 ## 13. Potential Future Adjustments to the Set Parameters
 
-1. The Snippet Size (Currently 250 characters)
+1. **The Snippet Size (Currently 250 characters)**
+   - *What it does:* It chops off the beginning of the note to show the re-ranker.
+   - *When to change it:* If you stop writing "atomic notes" (short, single-concept thoughts) and start writing long-form essays (1,000+ words).
+   - *The Risk:* If you write a 2-page note, the core insight might be in paragraph 4. A 250-character snippet (about 50 words) will only show the introduction, and the re-ranker might incorrectly drop a highly valuable note because it didn't see the "good part."
+   - *The Fix:* Increase to 500 or 1000 characters. Trade-off: This will slightly increase the cost of the re-ranking step.
 
-- What it does: It chops off the beginning of the note to show the re-ranker.
-- When to change it: If you stop writing "atomic notes" (short, single-concept thoughts) and start writing long-form essays (1,000+ words).
-- The Risk: If you write a 2-page note, the core insight might be in paragraph 4. A 250-character snippet (about 50 words) will only show the introduction, and the re-ranker might incorrectly drop a highly valuable note because it didn't see the "good part."
-- The Fix: Increase to 500 or 1000 characters. Trade-off: This will slightly increase the cost of the re-ranking step.
+2. **The Candidate Pool (Currently 12 notes)**
+   - *What it does:* It tells the vector search to grab the top 12 closest notes before the re-ranker looks at them.
+   - *When to change it:* When your knowledge base grows past 500–1,000 notes.
+   - *The Risk:* "Tunnel Vision." If you have 50 notes on "US Tax" and 50 notes on "Career," and you ask a broad question, the top 12 results might all be from the Tax category, completely blocking the Career notes from even being seen by the re-ranker.
+   - *The Fix:* Increase the RETRIEVAL_LIMIT to 20 or 25. Trade-off: The re-ranker prompt gets larger and costs a few cents more per query.
 
-2. The Candidate Pool (Currently 12 notes)
+3. **The Final Limit (Currently 8 notes)**
+   - *What it does:* It restricts the final, expensive Output LLM to only seeing the top 8 notes.
+   - *When to change it:* Almost never, unless you upgrade your Output Model.
+   - *The Risk:* "Lost in the Middle." Current LLMs (even Sonnet/Opus) suffer from attention degradation. If you feed them 20 notes, they will hallucinate or ignore the middle 12. 8 notes (roughly 3,000–4,000 words) is the "Goldilocks" zone for high-quality synthesis.
+   - *The Fix:* Only increase this if you switch to a model with a massive context window (e.g., 200k tokens) and you specifically want to generate a "Deep Dive Literature Review" rather than a standard summary.
 
-- What it does: It tells the vector search to grab the top 12 closest notes before the re-ranker looks at them.
-- When to change it: When your knowledge base grows past 500–1,000 notes.
-- The Risk: "Tunnel Vision." If you have 50 notes on "US Tax" and 50 notes on "Career," and you ask a broad question, the top 12 results might all be from the Tax category, completely blocking the Career notes from even being seen by the re-ranker.
-- The Fix: Increase the RETRIEVAL_LIMIT to 20 or 25. Trade-off: The re-ranker prompt gets larger and costs a few cents more per query.
-
-3. The Final Limit (Currently 8 notes)
-
-- What it does: It restricts the final, expensive Output LLM to only seeing the top 8 notes.
-- When to change it: Almost never, unless you upgrade your Output Model.
-- The Risk: "Lost in the Middle." Current LLMs (even Sonnet/Opus) suffer from attention degradation. If you feed them 20 notes, they will hallucinate or ignore the middle 12. 8 notes (roughly 3,000–4,000 words) is the "Goldilocks" zone for high-quality synthesis.
-- The Fix: Only increase this if you switch to a model with a massive context window (e.g., 200k tokens) and you specifically want to generate a "Deep Dive Literature Review" rather than a standard summary.
-
-4. The Similarity Threshold (Currently 0.20)
-
-- What it does: The minimum similarity score required for a note to be considered.
-- When to change it: As your database grows significantly.
-- The Risk: "Noise Floor." Right now, 0.20 is very loose, which is great for finding everything. But when you have 1,000 notes, a 0.20 threshold will pull in hundreds of completely irrelevant notes, crashing your re-ranker or blowing up your token costs.
-- The Fix: You will likely need to tighten this to 0.35 or 0.45 as your DB grows. Because your Topic Filtering (Phase 4) is now doing the heavy lifting for broad recall, you can afford to make the raw vector search stricter.
+4. **The Similarity Threshold (Currently 0.20)**
+   - *What it does:* The minimum similarity score required for a note to be considered.
+   - *When to change it:* As your database grows significantly.
+   - *The Risk:* "Noise Floor." Right now, 0.20 is very loose, which is great for finding everything. But when you have 1,000 notes, a 0.20 threshold will pull in hundreds of completely irrelevant notes, crashing your re-ranker or blowing up your token costs.
+   - *The Fix:* You will likely need to tighten this to 0.35 or 0.45 as your DB grows. Because your Topic Filtering (Phase 4) is now doing the heavy lifting for broad recall, you can afford to make the raw vector search stricter.
 
 ## 14. Running the Application
 
-You need to run two separate servers: one for the backend and one for the frontend dashboard.
+1. **Start the Backend (Flask + FastAPI)**
+   - Open your terminal, activate your virtual environment, and run the Flask server:
+     ```bash
+     source .venv/bin/activate
+     python wsgi.py
+     ```
+   - The full application (including the pre-built React dashboard) will be available at `http://127.0.0.1:5000`
 
-1. Start the Backend (Flask + FastAPI)
-- Open your first terminal, activate your virtual environment, and run the Flask server:
-    ```bash
-    source .venv/bin/activate
-    python wsgi.py
-- The API will be available at http://127.0.0.1:5000
-
-2. Start the Frontend Dashboard
-- Open a second terminal, navigate to the dashboard folder, and start the React development server:
-    cd dashboard
-    npm install # (Only needed the first time)
-    npm run dev
-- The dashboard will be available at http://localhost:5173
+2. **(Optional) Start the Frontend Dashboard in Dev Mode**
+   - If you are actively developing the React dashboard, open a second terminal, navigate to the dashboard folder, and start the Vite development server:
+     ```bash
+     cd dashboard
+     npm run dev
+     ```
+   - The dev dashboard will be available at `http://localhost:5173`. *(Note: For normal app usage, Flask serves the pre-built `npm run build` assets directly, so the dev server is only needed for active frontend development).*
