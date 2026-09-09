@@ -23,13 +23,17 @@ _pool = pg_pool.SimpleConnectionPool(1, 10, dsn=os.environ["DATABASE_URL"])
 def get_user_scoped_connection(user_id):
     """
     Yields a connection with app.current_user_id set for this transaction
-    only. Use for anything touching notes, note_versions, critique_sessions,
-    critique_turns, note_links, outputs, or output_sources -- every table
-    with an RLS policy in schema.sql.
+    only.
     """
     conn = _pool.getconn()
+    
+    # Force transaction mode so SET LOCAL works
+    conn.autocommit = False 
+    
     try:
         with conn.cursor() as cur:
+            # Explicitly start transaction to guarantee SET LOCAL works
+            cur.execute("BEGIN") 
             cur.execute("SET LOCAL app.current_user_id = %s", (str(user_id),))
         yield conn
         conn.commit()
