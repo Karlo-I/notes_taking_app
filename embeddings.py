@@ -1,18 +1,35 @@
 """
-Computes note embeddings via a local Ollama server. See README.md section 9
-for why local: no API key, no per-token cost, fits a personal, local-first
-project. Ollama only needs to be running at the moment a note is approved --
-nothing here requires it running continuously.
+Computes note embeddings via Jina AI API.
+Uses built-in urllib to ensure reliability within the Flask environment.
 """
+import os
+import urllib.request
+import json
 
-import requests
-
-_OLLAMA_URL = "http://localhost:11434/api/embed"
-_MODEL = "nomic-embed-text"
-
+_JINA_URL = "https://api.jina.ai/v1/embeddings"
+_MODEL = "jina-embeddings-v3"
 
 def get_embedding(text):
-    """Returns a single embedding vector (list of 768 floats) for the given text."""
-    response = requests.post(_OLLAMA_URL, json={"model": _MODEL, "input": text}, timeout=30)
-    response.raise_for_status()
-    return response.json()["embeddings"][0]
+    api_key = os.getenv('JINA_API_KEY')
+    if not api_key:
+        raise ValueError("JINA_API_KEY not found in environment variables.")
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "model": _MODEL,
+        "task": "retrieval.passage",
+        "normalized": True,
+        "input": [text]
+    }
+    
+    req_data = json.dumps(data).encode('utf-8')
+    req = urllib.request.Request(_JINA_URL, data=req_data, headers=headers, method='POST')
+    
+    with urllib.request.urlopen(req, timeout=30) as response:
+        response_body = response.read().decode('utf-8')
+        result = json.loads(response_body)
+        return result["data"][0]["embedding"]

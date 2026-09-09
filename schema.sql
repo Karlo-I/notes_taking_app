@@ -25,7 +25,7 @@ CREATE TABLE notes (
     user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     note_type    TEXT NOT NULL CHECK (note_type IN ('claim', 'reflection', 'question')),
     content      TEXT NOT NULL,
-    embedding    VECTOR(768),
+    embedding    VECTOR(1024),
     status       TEXT NOT NULL DEFAULT 'draft'
                  CHECK (status IN ('draft', 'under_review', 'approved', 'approved_merged', 'abandoned', 'merged')),
     merged_into  UUID REFERENCES notes(id),  -- set only when status='merged'; points at the surviving note
