@@ -64,8 +64,7 @@ htmlcov/
 app.log
 
 # Personal files
-notes/
-readme_old/
+/notes/
 
 # React stuff
 dashboard/node_modules/

@@ -10,7 +10,7 @@
 
 ## 1. Thesis
 
-A personal note-taking and reflection tool with one core mechanic: an adversarial AI critic sits between a raw note and the permanent knowledge base, and nothing enters storage until the user has either satisfied the critique or explicitly overridden it with a reason. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, Socratic dialogue) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture.
+A personal note-taking and reflection tool with one core mechanic: an AI critic sits between a raw note and the permanent knowledge base, and nothing enters storage until the user has satisfied the critique. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, summary) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture.
 
 ## 2. System architecture — two pipelines
 

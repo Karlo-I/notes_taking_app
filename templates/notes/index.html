@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Your Notes{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Your Notes</h1>
+        <button onclick="openNewNoteModal()" class="btn">+ New Note</button>
+    </div>
+
+    {% if notes %}
+        {% for note in notes %}
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <span class="badge">{{ note[1] }}</span>
+                        <span class="meta">{{ note[4].strftime('%Y-%m-%d %H:%M') if note[4] else '' }}</span>
+                    </div>
+                </div>
+                <p class="card-excerpt">
+                    {{ note[2][:200] }}{% if note[2]|length > 200 %}...{% endif %}
+                </p>
+                <div class="card-actions">
+                    <button 
+                        onclick="loadNoteDetails('{{ note[0] }}')" 
+                        class="btn btn-secondary btn-sm"
+                    >
+                        View Details
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card empty-state">
+            <p>No notes yet. Click "+ New Note" to start capturing your thoughts.</p>
+        </div>
+    {% endif %}
+{% endblock %}
