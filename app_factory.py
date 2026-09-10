@@ -5,23 +5,17 @@ this security-sensitive shouldn't ride on Flask's own debug flag.
 """
 
 import os
+import re
+from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, session, url_for, send_from_directory
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from a2wsgi import ASGIMiddleware
-from analytics_api import analytics_api
+from flask import Flask, redirect, request, session, url_for, render_template
 
 # Force load .env file explicitly, preventing reloader quirks
 load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-
-    # Mount FastAPI under /api/analytics
-    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
-        '/api/analytics': ASGIMiddleware(analytics_api)
-    })
 
     @app.after_request
     def prevent_caching(response):
@@ -42,29 +36,27 @@ def create_app():
 
     if os.environ.get("APP_ENV") == "development":
         from dev import dev_auth_bp
-
         app.register_blueprint(dev_auth_bp)
 
     from oauth import init_oauth, oauth_bp
-
     init_oauth(app)
     app.register_blueprint(oauth_bp)
 
     from notes import notes_bp
-
     app.register_blueprint(notes_bp)
 
     from review import review_bp
-
     app.register_blueprint(review_bp)
 
     from outputs import outputs_bp
-
     app.register_blueprint(outputs_bp)
 
     from search import search_bp
-
     app.register_blueprint(search_bp)
+
+    # NEW: Register the native Flask analytics blueprint
+    from analytics_bp import analytics_bp
+    app.register_blueprint(analytics_bp)
 
     # Conditionally register hidden admin blueprint
     if os.environ.get("ADMIN_ENABLED") == "true":
@@ -114,14 +106,9 @@ def create_app():
         session.clear()
         return redirect(url_for("index"))
     
-    from pathlib import Path
-
     # --- React Dashboard Connection ---
     @app.route("/dashboard")
     def dashboard():
-        import re
-        from flask import render_template
-        
         BASE_DIR = Path(__file__).resolve().parent
         dist_index = BASE_DIR / 'dashboard' / 'dist' / 'index.html'
         
