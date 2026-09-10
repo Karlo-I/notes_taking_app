@@ -21,19 +21,9 @@ _pool = pg_pool.SimpleConnectionPool(1, 10, dsn=os.environ["DATABASE_URL"])
 
 @contextmanager
 def get_user_scoped_connection(user_id):
-    """
-    Yields a connection with app.current_user_id set for this transaction
-    only.
-    """
     conn = _pool.getconn()
-    
-    # CRITICAL FIX: Force transaction mode so SET LOCAL works on Neon
-    conn.autocommit = False 
-    
     try:
         with conn.cursor() as cur:
-            # Explicitly start transaction to guarantee SET LOCAL works
-            cur.execute("BEGIN") 
             cur.execute("SET LOCAL app.current_user_id = %s", (str(user_id),))
         yield conn
         conn.commit()

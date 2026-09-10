@@ -3,10 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import get_user_scoped_connection
 from datetime import date
 
-# Create the FastAPI app instance
 analytics_api = FastAPI()
 
-# Allow React to make requests from localhost
 analytics_api.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,39 +17,34 @@ analytics_api.add_middleware(
 async def test_endpoint():
     return {"message": "FastAPI is working!"}
 
-# 1. COUNTS (Notes & Outputs)
 @analytics_api.get("/total-notes")
 def get_counts(user_id: str = Query(...)):
     with get_user_scoped_connection(user_id) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT count(*) FROM notes")
+            cur.execute("SELECT count(*) FROM notes WHERE user_id = %s", (user_id,))
             total_notes = cur.fetchone()[0] or 0
             
-            cur.execute("SELECT count(*) FROM outputs")
+            cur.execute("SELECT count(*) FROM outputs WHERE user_id = %s", (user_id,))
             total_outputs = cur.fetchone()[0] or 0
 
     return {"total_notes": total_notes, "total_outputs": total_outputs}
 
-# 2. HEATMAP DATA (Combined but distinct)
 @analytics_api.get("/heatmap-data")
 def get_heatmap_data(user_id: str = Query(...)):
     with get_user_scoped_connection(user_id) as conn:
         with conn.cursor() as cur:
-            # Get Notes counts per day
             cur.execute("""
                 SELECT DATE(created_at) as note_date, COUNT(*) 
-                FROM notes GROUP BY DATE(created_at)
-            """)
+                FROM notes WHERE user_id = %s GROUP BY DATE(created_at)
+            """, (user_id,))
             notes_data = {row[0]: row[1] for row in cur.fetchall()}
             
-            # Get Outputs counts per day
             cur.execute("""
                 SELECT DATE(created_at) as out_date, COUNT(*) 
-                FROM outputs GROUP BY DATE(created_at)
-            """)
+                FROM outputs WHERE user_id = %s GROUP BY DATE(created_at)
+            """, (user_id,))
             outputs_data = {row[0]: row[1] for row in cur.fetchall()}
 
-    # Merge the two dictionaries
     all_dates = set(list(notes_data.keys()) + list(outputs_data.keys()))
     merged_data = []
     
@@ -62,19 +55,18 @@ def get_heatmap_data(user_id: str = Query(...)):
             "date": d.strftime('%Y-%m-%d'),
             "notes": n_count,
             "outputs": o_count,
-            "count": n_count + o_count # Total used for the color intensity
+            "count": n_count + o_count
         })
         
     return merged_data
 
-# 3. NOTES COMPOSITION
 @analytics_api.get("/composition-data")
 def get_composition_data(user_id: str = Query(...)):
     with get_user_scoped_connection(user_id) as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT note_type, COUNT(*) FROM notes GROUP BY note_type
-            """)
+                SELECT note_type, COUNT(*) FROM notes WHERE user_id = %s GROUP BY note_type
+            """, (user_id,))
             rows = cur.fetchall()
             
     counts = {"claim": 0, "reflection": 0, "question": 0}
@@ -88,14 +80,13 @@ def get_composition_data(user_id: str = Query(...)):
         {"name": "Questions", "value": counts["question"]}
     ]
 
-# 4. OUTPUTS COMPOSITION (New)
 @analytics_api.get("/outputs-composition")
 def get_outputs_composition(user_id: str = Query(...)):
     with get_user_scoped_connection(user_id) as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT output_type, COUNT(*) FROM outputs GROUP BY output_type
-            """)
+                SELECT output_type, COUNT(*) FROM outputs WHERE user_id = %s GROUP BY output_type
+            """, (user_id,))
             rows = cur.fetchall()
             
     counts = {"qna": 0, "narration": 0, "summary": 0}
@@ -109,35 +100,33 @@ def get_outputs_composition(user_id: str = Query(...)):
         {"name": "Summary", "value": counts["summary"]}
     ]
 
-# 5. QUALITY & COST METRICS
 @analytics_api.get("/quality-metrics")
 def get_quality_metrics(user_id: str = Query(...)):
     with get_user_scoped_connection(user_id) as conn:
         with conn.cursor() as cur:
-            # A. Get Counts
-            cur.execute("SELECT count(*) FROM notes")
+            cur.execute("SELECT count(*) FROM notes WHERE user_id = %s", (user_id,))
             total_notes = cur.fetchone()[0] or 0
             
-            cur.execute("SELECT count(*) FROM outputs")
+            cur.execute("SELECT count(*) FROM outputs WHERE user_id = %s", (user_id,))
             total_outputs = cur.fetchone()[0] or 0
 
-            cur.execute("SELECT count(*) FROM notes WHERE status = 'approved'")
+            cur.execute("SELECT count(*) FROM notes WHERE user_id = %s AND status = 'approved'", (user_id,))
             approved_notes = cur.fetchone()[0] or 0
 
-            # B. Get Token Sums
-            # 1. Note Classification Tokens
-            cur.execute("SELECT COALESCE(SUM(classify_input_tokens + classify_output_tokens), 0) FROM notes")
+            cur.execute("SELECT COALESCE(SUM(classify_input_tokens + classify_output_tokens), 0) FROM notes WHERE user_id = %s", (user_id,))
             classify_tokens = cur.fetchone()[0]
 
-            # 2. Critique Session Tokens
-            cur.execute("SELECT COALESCE(SUM(critic_input_tokens + critic_output_tokens), 0) FROM critique_sessions")
+            # Using subquery to safely link critique sessions to the user's notes
+            cur.execute("""
+                SELECT COALESCE(SUM(critic_input_tokens + critic_output_tokens), 0) 
+                FROM critique_sessions 
+                WHERE note_id IN (SELECT id FROM notes WHERE user_id = %s)
+            """, (user_id,))
             critique_tokens = cur.fetchone()[0]
 
-            # 3. Output Generation Tokens
-            cur.execute("SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM outputs")
+            cur.execute("SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM outputs WHERE user_id = %s", (user_id,))
             output_tokens = cur.fetchone()[0]
 
-    # Calculations
     total_tokens = classify_tokens + critique_tokens + output_tokens
     total_note_tokens = classify_tokens + critique_tokens
     
