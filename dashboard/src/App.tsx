@@ -20,11 +20,11 @@ function App() {
   useEffect(() => {
     const userId = (window as any).CURRENT_USER_ID;
     Promise.all([
-      fetch(`http://127.0.0.1:5000/api/analytics/total-notes?user_id=${userId}`).then(res => res.json()),
-      fetch(`http://127.0.0.1:5000/api/analytics/heatmap-data?user_id=${userId}`).then(res => res.json()),
-      fetch(`http://127.0.0.1:5000/api/analytics/composition-data?user_id=${userId}`).then(res => res.json()),
-      fetch(`http://127.0.0.1:5000/api/analytics/outputs-composition?user_id=${userId}`).then(res => res.json()),
-      fetch(`http://127.0.0.1:5000/api/analytics/quality-metrics?user_id=${userId}`).then(res => res.json())
+      fetch(`/api/analytics/total-notes?user_id=${userId}`).then(res => res.json()),
+      fetch(`/api/analytics/heatmap-data?user_id=${userId}`).then(res => res.json()),
+      fetch(`/api/analytics/composition-data?user_id=${userId}`).then(res => res.json()),
+      fetch(`/api/analytics/outputs-composition?user_id=${userId}`).then(res => res.json()),
+      fetch(`/api/analytics/quality-metrics?user_id=${userId}`).then(res => res.json())
     ]).then(([countsData, heatmap, notesComp, outputsComp, metricsData]) => {
       setCounts(countsData)
       setHeatmapData(heatmap)
