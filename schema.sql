@@ -223,3 +223,45 @@ CREATE POLICY note_links_isolation ON note_links
         AND
         related_note_id IN (SELECT id FROM notes WHERE user_id = current_setting('app.current_user_id', true)::uuid)
     );
+
+-- ============================================
+-- INDEXES FOR PERFORMANCE OPTIMIZATION
+-- ============================================
+
+-- User lookups on notes
+CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
+
+-- Heatmap queries (user + date filtering)
+CREATE INDEX IF NOT EXISTS idx_notes_user_created ON notes(user_id, created_at);
+
+-- Note type composition
+CREATE INDEX IF NOT EXISTS idx_notes_user_type ON notes(user_id, note_type);
+
+-- Status filtering for approval metrics
+CREATE INDEX IF NOT EXISTS idx_notes_user_status ON notes(user_id, status);
+
+-- User lookups on outputs
+CREATE INDEX IF NOT EXISTS idx_outputs_user_id ON outputs(user_id);
+
+-- Output heatmap queries
+CREATE INDEX IF NOT EXISTS idx_outputs_user_created ON outputs(user_id, created_at);
+
+-- Output type composition
+CREATE INDEX IF NOT EXISTS idx_outputs_user_type ON outputs(user_id, output_type);
+
+-- Critique sessions linked to user's notes
+CREATE INDEX IF NOT EXISTS idx_critique_sessions_note_id ON critique_sessions(note_id);
+
+-- Topics by user
+CREATE INDEX IF NOT EXISTS idx_topics_user_id ON topics(user_id);
+
+-- Note-Topic relationships
+CREATE INDEX IF NOT EXISTS idx_note_topics_note_id ON note_topics(note_id);
+CREATE INDEX IF NOT EXISTS idx_note_topics_topic_id ON note_topics(topic_id);
+
+-- Update statistics for query planner
+ANALYZE notes;
+ANALYZE outputs;
+ANALYZE critique_sessions;
+ANALYZE topics;
+ANALYZE note_topics;
