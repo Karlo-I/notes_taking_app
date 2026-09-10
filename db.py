@@ -27,7 +27,7 @@ def get_user_scoped_connection(user_id):
     """
     conn = _pool.getconn()
     
-    # Force transaction mode so SET LOCAL works
+    # CRITICAL FIX: Force transaction mode so SET LOCAL works on Neon
     conn.autocommit = False 
     
     try:
