@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Base — Log In / Register</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="login-body">
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-icon">🧠</div>
+            <h1 class="login-title">Knowledge Base</h1>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <h3 style="color: #f0f6fc; margin-top: 20px; font-size: 16px; text-align: center;">Log In</h3>
+            <form method="POST" action="{{ url_for('email_auth.login') }}" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="email" name="email" placeholder="Email" required style="padding: 10px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #f0f6fc;">
+                <input type="password" name="password" placeholder="Password" required style="padding: 10px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #f0f6fc;">
+                <button type="submit" class="btn" style="background: #238636; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600;">Log In</button>
+            </form>
+
+            <div style="margin: 20px 0; border-top: 1px solid #30363d;"></div>
+
+            <h3 style="color: #f0f6fc; font-size: 16px; text-align: center;">Create Account</h3>
+            <form method="POST" action="{{ url_for('email_auth.register') }}" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="email" name="email" placeholder="Email" required style="padding: 10px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #f0f6fc;">
+                <input type="password" name="password" placeholder="Password (min 8 chars)" required style="padding: 10px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #f0f6fc;">
+                <button type="submit" class="btn btn-secondary" style="background: #21262d; color: #f0f6fc; border: 1px solid #30363d; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600;">Register</button>
+            </form>
+
+            <div style="margin-top: 20px; font-size: 12px; color: #8b949e; text-align: center;">
+                <p>Or continue with:</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+                    <a href="/auth/google/login" class="btn btn-secondary" style="font-size: 12px; padding: 8px 12px;">Google</a>
+                    <a href="/auth/github/login" class="btn btn-secondary" style="font-size: 12px; padding: 8px 12px;">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

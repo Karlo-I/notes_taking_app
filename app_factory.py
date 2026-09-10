@@ -10,6 +10,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, redirect, request, session, url_for, render_template
+from extensions import limiter
 
 # Force load .env file explicitly, preventing reloader quirks
 load_dotenv()
@@ -17,22 +18,43 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
 
+    # Initialize Rate Limiter with the app instance
+    limiter.init_app(app)
+    
     @app.after_request
     def prevent_caching(response):
         """
-        Prevents the browser from caching pages. 
+        Aggressively prevents the browser from caching any responses.
         This ensures that hitting the "Back" button after logout 
         forces a server check and redirects to login, rather than 
         showing a cached version of the protected page.
         """
-        # Only apply to HTML pages, let the browser cache static CSS/JS/images for speed
-        if response.content_type.startswith('text/html'):
-            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
+        # Apply to ALL responses to be absolutely safe against back-button caching
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        # Extra headers for stubborn browsers/proxies
+        response.headers['Surrogate-Control'] = 'no-store'
+        
+        # Ensure cache varies by cookie so protected pages aren't leaked between users
+        response.headers['Vary'] = 'Cookie' 
+        
         return response
 
     app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
+
+    # --- SECURE SESSION COOKIES ---
+    # Prevents JavaScript from reading the cookie (stops XSS theft)
+    app.config["SESSION_COOKIE_HTTPONLY"] = True 
+    
+    # Prevents the cookie from being sent in cross-site requests (stops CSRF)
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax" 
+    
+    # Only sends cookie over HTTPS. 
+    # We use an env var so local HTTP dev doesn't break, but Prod is strictly secure.
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("APP_ENV") == "production" 
+    # --------------------------------
 
     if os.environ.get("APP_ENV") == "development":
         from dev import dev_auth_bp
@@ -54,9 +76,13 @@ def create_app():
     from search import search_bp
     app.register_blueprint(search_bp)
 
-    # NEW: Register the native Flask analytics blueprint
+    # Register the native Flask analytics blueprint
     from analytics_bp import analytics_bp
     app.register_blueprint(analytics_bp)
+    
+    # Register Email/Password Auth Blueprint
+    from email_auth import email_auth_bp
+    app.register_blueprint(email_auth_bp)
 
     # Conditionally register hidden admin blueprint
     if os.environ.get("ADMIN_ENABLED") == "true":
@@ -73,6 +99,8 @@ def create_app():
         links = [
             '<a href="/auth/google/login" class="btn">Log in with Google</a>',
             '<a href="/auth/github/login" class="btn">Log in with GitHub</a>',
+            '<a href="/auth/email/register" class="btn btn-secondary">Log in or Register with Email</a>',
+
         ]
         if os.environ.get("APP_ENV") == "development":
             links.append('<a href="/dev/login" class="btn btn-secondary">Dev Login</a>')
@@ -109,6 +137,10 @@ def create_app():
     # --- React Dashboard Connection ---
     @app.route("/dashboard")
     def dashboard():
+        # GUARD CLAUSE: Redirect to login if user is not authenticated
+        if 'user_id' not in session:
+            return redirect(url_for('index'))
+
         BASE_DIR = Path(__file__).resolve().parent
         dist_index = BASE_DIR / 'dashboard' / 'dist' / 'index.html'
         

@@ -4,16 +4,18 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS vector;    -- pgvector, embedding columns + similarity search
 
--- Identity via OAuth only. No password column exists anywhere in this schema.
--- Note: this table intentionally has no RLS policy. Login (OAuth callback) has
--- to look the user up by oauth_subject_id BEFORE a user context exists to scope
+-- Identity via OAuth or Email/Password.
+-- Note: this table intentionally has no RLS policy. Login (OAuth callback or email check) has
+-- to look the user up by oauth_subject_id or email BEFORE a user context exists to scope
 -- a policy against -- a chicken-and-egg problem. Handled instead by keeping the
 -- login lookup as a narrow, explicit query in the app layer, not by RLS.
 CREATE TABLE users (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    oauth_provider   TEXT NOT NULL,
-    oauth_subject_id TEXT NOT NULL,
+    oauth_provider   TEXT,
+    oauth_subject_id TEXT,
     display_name     TEXT,
+    email            VARCHAR(255) UNIQUE,
+    password_hash    VARCHAR(255),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (oauth_provider, oauth_subject_id)
 );
@@ -183,7 +185,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 
 
 -- ---------------------------------------------------------------------------
--- Database and Topic Extractin Engine
+-- Database and Topic Extraction Engine
 -- ---------------------------------------------------------------------------
 
 -- 1. Create the topics table

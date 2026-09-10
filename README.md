@@ -62,7 +62,7 @@ Merges are append-only — a new `note_versions` row is written, nothing is over
 | `outputs` | id, user_id, output_type, topic_query, generated_content | One table for all three output types |
 | `output_sources` | id, output_id, note_id | Provenance — which notes grounded which output |
 | `topics` | id, user_id, name | High-level umbrella concepts extracted from notes (e.g., "US Withholding Tax"). |
-| `users` | id, oauth_provider, oauth_subject_id, display_name | Identity via OAuth only — no password field |
+| `users` | id, oauth_provider, oauth_subject_id, email, password_hash, display_name | Identity via OAuth or Email/Password. |
 
 Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critique_sessions→critique_turns (1:M nested), notes↔notes via note_links (self-referencing M:M), notes↔topics via note_topics (M:M), users→outputs (1:M), outputs↔notes via output_sources (M:M).
 
@@ -70,10 +70,12 @@ Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critiqu
 
 - **Transport:** HTTPS, automatic via hosting provider. No engineering cost.
 - **At rest:** provider-level disk encryption (default from hosting provider) is the chosen baseline. Field-level or zero-knowledge encryption was considered and explicitly not adopted — it conflicts with the core feature, since the LLM needs plaintext at request time to critique and retrieve.
-- **Auth:** OAuth (Google/GitHub). No password ever touches the app. Callback URLs strictly use `127.0.0.1` (not `localhost`) to prevent redirect_uri mismatch errors.
+- **Auth:** OAuth (Google/GitHub) and Email/Password. No password ever touches the app in plain text. Callback URLs strictly use `127.0.0.1` (not `localhost`) to prevent redirect_uri mismatch errors.
+- **Password Security:** Uses `bcrypt` for hashing. Enforces a minimum length of 8 characters and blocks common passwords. Uses generic error messages ("Invalid email or password") to prevent User Enumeration attacks.
+- **Rate Limiting:** `Flask-Limiter` protects the login endpoint against brute-force attacks (max 5 attempts per minute per IP).
 - **Database Role Isolation:** The application connects to the database using a restricted `app_user` role (not the database owner). This ensures Row Level Security (RLS) policies are strictly enforced and cannot be accidentally bypassed by superuser privileges.
 - **Row Level Security:** enabled on all user-scoped tables. Policies check `user_id = current_setting('app.current_user_id')`. **Must be set per-request via `SET LOCAL` inside a transaction, not per-connection** — pooled connections reused across users will leak context otherwise if this is done wrong. This is the single most important implementation detail to get right early.
-- **Cache Prevention:** Strict HTTP headers (`Cache-Control`, `Pragma`, `Expires`) are applied to all HTML responses via an `@app.after_request` hook. This prevents the browser from caching protected pages, ensuring that hitting the "Back" button after logout forces a server check and redirects to the login page, rather than showing a cached version of private data.
+- **Cache Prevention:** Strict HTTP headers (`Cache-Control`, `Pragma`, `Expires`) and a client-side `pageshow` event listener are applied to defeat the browser's Back-Forward Cache (bfcache). This ensures that hitting the "Back" button after logout forces a real server check and redirects to the login page, rather than showing a cached version of private data.
 - **AI training:** whichever LLM provider is used, confirm current terms directly rather than assume — state findings honestly in the app's own privacy page.
 
 ## 7. Cost model
@@ -85,7 +87,7 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 ## 8. Build order
 
 1. Schema + migrations
-2. Auth (OAuth) + RLS policies from the start, not retrofitted
+2. Auth (OAuth + Email/Password) + RLS policies from the start, not retrofitted
 3. Notes CRUD without the critic — prove the basic write path
 4. Critic dialogue loop
 5. Integration agent
@@ -103,7 +105,7 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 - **Frontend:** React, TypeScript, Vite, Recharts, react-calendar-heatmap, Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals/search), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
 - **Backend:** Python, Flask (Blueprints & App Factory pattern)
 - **Database:** PostgreSQL (with pgvector), run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
-- **Auth:** OAuth 2.0 (Google/GitHub) via Authlib
+- **Auth:** OAuth 2.0 (Google/GitHub) via Authlib, Email/Password via `bcrypt` and `Flask-Limiter`
 - **AI:** Claude Haiku-class model for critic + integration; stronger model optional for draft prose
 - **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL, Render for production deployment
 
@@ -133,6 +135,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
   - **Composition Charts:** Side-by-side donut charts breaking down Notes (Claims, Reflections, Questions) and Outputs (Q&A, Narration, Summary).
   - **Layout:** Optimized vertical spacing and a sticky sidebar to ensure the dashboard and navigation remain fully visible without excessive scrolling.
 - **Database Indexing:** Added composite indexes to `notes`, `outputs`, `critique_sessions`, and `topics` to drastically accelerate user-scoped dashboard queries and vector retrieval without altering the core schema.
+- **Email/Password Authentication:** Added alongside OAuth. Uses `bcrypt` for hashing, enforces modern password rules (length > complexity), and prevents User Enumeration via generic error messages. 
 - **Global Footer:** Added a clean, centered footer across all pages featuring a core philosophy statement, social links, and copyright, with optimized bottom-edge spacing.
 
 ## 13. Potential Future Adjustments to the Set Parameters
@@ -184,4 +187,4 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
      ```bash
      pip install -r requirements.txt && cd dashboard && npm install && npm run build
      ```
-   - The `DATABASE_URL` environment variable must point to the restricted `app_user` (not the database owner) to ensure Row Level Security functions correctly.
+   - **CRITICAL:** The `DATABASE_URL` environment variable in Render **must** point to the restricted `app_user` (not the database owner) to ensure Row Level Security functions correctly. Example format: `postgresql://app_user:AppUser#2026$SecurePass!@ep-xyz...neon.tech/neondb?sslmode=require`.

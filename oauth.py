@@ -13,8 +13,9 @@ defines what "log in" means at the database level.
 
 import os
 from authlib.integrations.flask_client import OAuth
+from authlib.integrations.base_client.errors import MismatchingStateError
 from db import get_unscoped_connection
-from flask import Blueprint, abort, redirect, session, url_for
+from flask import Blueprint, abort, redirect, session, url_for, flash
 
 oauth_bp = Blueprint("oauth", __name__)
 oauth = OAuth()
@@ -81,7 +82,12 @@ def callback(provider):
     if client is None:
         abort(404)
 
-    token = client.authorize_access_token()
+    # GRACEFUL ERROR HANDLING: Catch back-button replays or cleared sessions
+    try:
+        token = client.authorize_access_token()
+    except MismatchingStateError:
+        flash("Login session expired or was interrupted. Please try logging in again.", "error")
+        return redirect(url_for("index"))
 
     if provider == "google":
         # authlib validates the id_token and populates this automatically
