@@ -55,7 +55,7 @@ Merges are append-only — a new `note_versions` row is written, nothing is over
 |---|---|---|
 | `critique_sessions` | id, note_id, resolution, override_reason | One row per critique dialogue |
 | `critique_turns` | id, session_id, turn_number, role, content | The dialogue transcript |
-| `notes` | id, user_id, note_type, content, embedding, status | Current state; embedding written only after approval |
+| `notes` | id, user_id, note_type, content, embedding, status | Current state; embedding is written only after approval. Dimension is locked to 1024. Unreviewed drafts never enter the searchable space. |
 | `note_versions` | id, note_id, version_number, content | Append-only merge history |
 | `note_links` | id, note_id, related_note_id, link_type | Related-but-distinct notes — the graph structure |
 | `note_topics` | note_id, topic_id | Junction table linking notes to their umbrella topics (M:M). |
@@ -75,6 +75,7 @@ Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critiqu
 - **Rate Limiting:** `Flask-Limiter` protects the login endpoint against brute-force attacks (max 5 attempts per minute per IP).
 - **Database Role Isolation:** The application connects to the database using a restricted `app_user` role (not the database owner). This ensures Row Level Security (RLS) policies are strictly enforced and cannot be accidentally bypassed by superuser privileges.
 - **Row Level Security:** enabled on all user-scoped tables. Policies check `user_id = current_setting('app.current_user_id')`. **Must be set per-request via `SET LOCAL` inside a transaction, not per-connection** — pooled connections reused across users will leak context otherwise if this is done wrong. This is the single most important implementation detail to get right early.
+- **Users Table RLS Exception:** The `users` table intentionally has **no RLS policy**. This solves the "chicken-and-egg" login problem. Login lookups (both OAuth and Email/Password) are handled via narrow, explicit queries in the app layer (e.g., `SELECT id FROM users WHERE email = %s`) *before* a user context exists to scope a policy against.
 - **Cache Prevention:** Strict HTTP headers (`Cache-Control`, `Pragma`, `Expires`) and a client-side `pageshow` event listener are applied to defeat the browser's Back-Forward Cache (bfcache). This ensures that hitting the "Back" button after logout forces a real server check and redirects to the login page, rather than showing a cached version of private data.
 - **AI training:** whichever LLM provider is used, confirm current terms directly rather than assume — state findings honestly in the app's own privacy page.
 
@@ -93,7 +94,7 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 5. Integration agent
 6. Retrieval + output generation (all three output types share this infrastructure)
 7. PDF export
-8. Background run script (start.sh) & Docker auto-start configuration
+8. Background run script (start.sh) & Docker auto-start configuration (Note: Local dev uses Docker, but production deployment uses Neon)
 9. UI/UX Overhaul (Sidebar layout, Jinja2 templates, premium CSS)
 10. Glassmorphism Modal system (replacing separate detail pages)
 11. Global Live Search (autocomplete across Notes & Outputs)
@@ -104,7 +105,7 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 
 - **Frontend:** React, TypeScript, Vite, Recharts, react-calendar-heatmap, Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals/search), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
 - **Backend:** Python, Flask (Blueprints & App Factory pattern)
-- **Database:** PostgreSQL (with pgvector), run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
+- **Database:** PostgreSQL (with pgvector). Run locally via Docker Compose for development, and hosted on Neon for production — same engine in both environments, no dual-schema translation layer needed.
 - **Auth:** OAuth 2.0 (Google/GitHub) via Authlib, Email/Password via `bcrypt` and `Flask-Limiter`
 - **AI:** Claude Haiku-class model for critic + integration; stronger model optional for draft prose
 - **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL, Render for production deployment
@@ -113,12 +114,7 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 
 Not built for scale or multi-tenant SaaS — built for one user's personal reflection practice, prioritizing coherence and cost-efficiency over throughput. Not a general PKM tool — the critic-on-ingestion gate is the entire point, not a bolt-on feature.
 
-## 11. Not yet decided
-
-- Exact embedding model and vector dimension size
-- Whether `users` table needs its own RLS policy, given the OAuth login lookup happens before a user context exists (open chicken-and-egg problem, addressed with a narrower app-level query pattern for login only — see comment in schema.sql)
-
-## 12. Implementation Notes & Recent Additions
+## 11. Implementation Notes & Recent Additions
 
 - **Modals & JSON:** The `notes.py` and `outputs.py` detail routes return raw JSON when queried with `?format=json`. This powers the frontend modal system without requiring a separate API blueprint.
 - **Embeddings:** Notes are only embedded into the vector database *after* they are approved. Drafts and notes under review are never searchable.
@@ -138,7 +134,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 - **Email/Password Authentication:** Added alongside OAuth. Uses `bcrypt` for hashing, enforces modern password rules (length > complexity), and prevents User Enumeration via generic error messages. 
 - **Global Footer:** Added a clean, centered footer across all pages featuring a core philosophy statement, social links, and copyright, with optimized bottom-edge spacing.
 
-## 13. Potential Future Adjustments to the Set Parameters
+## 12. Potential Future Adjustments to the Set Parameters
 
 1. **The Snippet Size (Currently 250 characters)**
    - *What it does:* It chops off the beginning of the note to show the re-ranker.
@@ -164,7 +160,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
    - *The Risk:* "Noise Floor." Right now, 0.20 is very loose, which is great for finding everything. But when you have 1,000 notes, a 0.20 threshold will pull in hundreds of completely irrelevant notes, crashing your re-ranker or blowing up your token costs.
    - *The Fix:* You will likely need to tighten this to 0.35 or 0.45 as your DB grows. Because your Topic Filtering (Phase 4) is now doing the heavy lifting for broad recall, you can afford to make the raw vector search stricter.
 
-## 14. Running the Application
+## 13. Running the Application
 
 1. **Start the Backend (Flask)**
    - Open your terminal, activate your virtual environment, and run the Flask server:
