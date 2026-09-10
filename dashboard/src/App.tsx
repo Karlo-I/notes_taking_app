@@ -19,23 +19,22 @@ function App() {
 
   useEffect(() => {
     const userId = (window as any).CURRENT_USER_ID;
-    Promise.all([
-      fetch(`/api/analytics/total-notes?user_id=${userId}`).then(res => res.json()),
-      fetch(`/api/analytics/heatmap-data?user_id=${userId}`).then(res => res.json()),
-      fetch(`/api/analytics/composition-data?user_id=${userId}`).then(res => res.json()),
-      fetch(`/api/analytics/outputs-composition?user_id=${userId}`).then(res => res.json()),
-      fetch(`/api/analytics/quality-metrics?user_id=${userId}`).then(res => res.json())
-    ]).then(([countsData, heatmap, notesComp, outputsComp, metricsData]) => {
-      setCounts(countsData)
-      setHeatmapData(heatmap)
-      setNotesComposition(notesComp)
-      setOutputsComposition(outputsComp)
-      setMetrics(metricsData)
-      setLoading(false)
-    }).catch(error => {
-      console.error('Error fetching data:', error)
-      setLoading(false)
-    })
+    
+    // ONE single fetch request instead of 5
+    fetch(`/api/analytics/dashboard-data?user_id=${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        setCounts(data.counts)
+        setHeatmapData(data.heatmap)
+        setNotesComposition(data.notes_comp)
+        setOutputsComposition(data.outputs_comp)
+        setMetrics(data.metrics)
+        setLoading(false)
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error)
+        setLoading(false)
+      })
   }, [])
 
   if (loading) return <div style={{ padding: '40px', color: '#c9d1d9', textAlign: 'center' }}>Loading...</div>
