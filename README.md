@@ -2,9 +2,9 @@
 
 **Purpose of this document:** single source of truth for architecture decisions made during planning. Paste this into any AI session (Claude Code, another tool, a fresh chat) before asking for implementation help — it carries context that a fresh chat won't have.
 
-**AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic). All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
+**AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic) and Qwen. All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
 
-**Last updated:** September 08, 2026
+**Last updated:** September 11, 2026
 
 ---
 
@@ -71,6 +71,7 @@ Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critiqu
 - **Transport:** HTTPS, automatic via hosting provider. No engineering cost.
 - **At rest:** provider-level disk encryption (default from hosting provider) is the chosen baseline. Field-level or zero-knowledge encryption was considered and explicitly not adopted — it conflicts with the core feature, since the LLM needs plaintext at request time to critique and retrieve.
 - **Auth:** OAuth (Google/GitHub). No password ever touches the app. Callback URLs strictly use `127.0.0.1` (not `localhost`) to prevent redirect_uri mismatch errors.
+- **Database Role Isolation:** The application connects to the database using a restricted `app_user` role (not the database owner). This ensures Row Level Security (RLS) policies are strictly enforced and cannot be accidentally bypassed by superuser privileges.
 - **Row Level Security:** enabled on all user-scoped tables. Policies check `user_id = current_setting('app.current_user_id')`. **Must be set per-request via `SET LOCAL` inside a transaction, not per-connection** — pooled connections reused across users will leak context otherwise if this is done wrong. This is the single most important implementation detail to get right early.
 - **Cache Prevention:** Strict HTTP headers (`Cache-Control`, `Pragma`, `Expires`) are applied to all HTML responses via an `@app.after_request` hook. This prevents the browser from caching protected pages, ensuring that hitting the "Back" button after logout forces a server check and redirects to the login page, rather than showing a cached version of private data.
 - **AI training:** whichever LLM provider is used, confirm current terms directly rather than assume — state findings honestly in the app's own privacy page.
@@ -100,11 +101,11 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 ## 9. Tech stack
 
 - **Frontend:** React, TypeScript, Vite, Recharts, react-calendar-heatmap, Jinja2 Templates (base inheritance), Vanilla JavaScript (Fetch API for modals/search), CSS3 (CSS variables, Glassmorphism `backdrop-filter`)
-- **Backend:** Python, Flask (Blueprints & App Factory pattern), FastAPI
+- **Backend:** Python, Flask (Blueprints & App Factory pattern)
 - **Database:** PostgreSQL (with pgvector), run locally via Docker — same engine in dev and prod, no dual-schema translation layer needed
 - **Auth:** OAuth 2.0 (Google/GitHub) via Authlib
 - **AI:** Claude Haiku-class model for critic + integration; stronger model optional for draft prose
-- **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL
+- **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL, Render for production deployment
 
 ## 10. What this deliberately is not
 
@@ -125,12 +126,13 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 - **Topic Extraction:** Runs automatically in `review.py` after a note is approved. Uses a cheap Haiku call to extract 1-3 broad topics and links them in the `note_topics` table.
 - **Re-ranking:** Uses a cheap Haiku call to read the first 250 characters of up to 12 retrieved notes, returning only the top 8 most relevant indices to save context window space and prevent hallucination.
 - **Global Live Search:** A dedicated `/search` route with a debounced, live-autocomplete dropdown that queries both Notes and Outputs instantly as you type, complete with Enter-key support and precise cursor positioning.
-- **Holistic Analytics Dashboard:** Completely overhauled to provide a unified, user-scoped view of the knowledge base (enforcing strict data isolation via FastAPI). Features include:
+- **Holistic Analytics Dashboard:** Completely overhauled to provide a unified, user-scoped view of the knowledge base. Migrated from an async FastAPI/a2wsgi setup to a native Flask Blueprint (`analytics_bp.py`) to eliminate Gunicorn worker deadlocks. Features a single, optimized endpoint (`/api/analytics/dashboard-data`) for instant loading, enforcing strict data isolation. Includes:
   - **Productivity:** Separate, clearly delineated counts for Total Notes and Total Outputs.
   - **Quality & Cost:** Notes Approval Rate, Total Tokens Used, and Average Tokens per item (Notes vs. Outputs).
   - **Activity Heatmap:** A combined GitHub-style graph that distinctly tracks and tooltips both notes and outputs per day (e.g., "4 notes & 2 outputs on Sep 2").
   - **Composition Charts:** Side-by-side donut charts breaking down Notes (Claims, Reflections, Questions) and Outputs (Q&A, Narration, Summary).
   - **Layout:** Optimized vertical spacing and a sticky sidebar to ensure the dashboard and navigation remain fully visible without excessive scrolling.
+- **Database Indexing:** Added composite indexes to `notes`, `outputs`, `critique_sessions`, and `topics` to drastically accelerate user-scoped dashboard queries and vector retrieval without altering the core schema.
 - **Global Footer:** Added a clean, centered footer across all pages featuring a core philosophy statement, social links, and copyright, with optimized bottom-edge spacing.
 
 ## 13. Potential Future Adjustments to the Set Parameters
@@ -161,7 +163,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 
 ## 14. Running the Application
 
-1. **Start the Backend (Flask + FastAPI)**
+1. **Start the Backend (Flask)**
    - Open your terminal, activate your virtual environment, and run the Flask server:
      ```bash
      source .venv/bin/activate
@@ -176,3 +178,10 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
      npm run dev
      ```
    - The dev dashboard will be available at `http://localhost:5173`. *(Note: For normal app usage, Flask serves the pre-built `npm run build` assets directly, so the dev server is only needed for active frontend development).*
+
+3. **Production Deployment (Render)**
+   - The Render Web Service uses a custom build command to ensure both Python dependencies and the React frontend are built correctly:
+     ```bash
+     pip install -r requirements.txt && cd dashboard && npm install && npm run build
+     ```
+   - The `DATABASE_URL` environment variable must point to the restricted `app_user` (not the database owner) to ensure Row Level Security functions correctly.

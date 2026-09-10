@@ -2,7 +2,7 @@ import os
 from contextlib import contextmanager
 from psycopg2 import pool as pg_pool
 
-_pool = pg_pool.SimpleConnectionPool(1, 10, dsn=os.environ["DATABASE_URL"])
+_pool = pg_pool.SimpleConnectionPool(1, 20, dsn=os.environ["DATABASE_URL"])
 
 @contextmanager
 def get_user_scoped_connection(user_id):
