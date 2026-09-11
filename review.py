@@ -120,14 +120,15 @@ def run_integration(note_id, content, embedding):
     if result["decision"] == "merge" and result.get("target_note_id"):
         _merge_into(result["target_note_id"], note_id, result["merged_content"])
     elif result["decision"] == "link" and result.get("target_note_id"):
+        # Read the link_type from the AI's decision, default to 'related' if missing
+        link_type = result.get("link_type", "related")
+        
         with get_user_scoped_connection(session["user_id"]) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO note_links (note_id, related_note_id, link_type) VALUES (%s, %s, 'related')",
-                    (str(note_id), result["target_note_id"]),
+                    "INSERT INTO note_links (note_id, related_note_id, link_type) VALUES (%s, %s, %s)",
+                    (str(note_id), result["target_note_id"], link_type),
                 )
-    # decision == "new" -> nothing further to do, the note already stands alone
-
 
 def _open_session_id(cur, note_id):
     cur.execute(

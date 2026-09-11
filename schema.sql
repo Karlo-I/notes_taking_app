@@ -84,7 +84,7 @@ CREATE TABLE note_links (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     note_id         UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
     related_note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-    link_type       TEXT NOT NULL DEFAULT 'related',
+    link_type       TEXT NOT NULL DEFAULT 'related' CHECK (link_type IN ('related', 'supports', 'contradicts', 'elaborates', 'parent', 'child')),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (note_id <> related_note_id)
 );

@@ -10,14 +10,29 @@ from anthropic import Anthropic
 _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 _MODEL = "claude-haiku-4-5-20251001"
 
+
 _SYSTEM_PROMPT = """You decide how a newly approved note relates to notes already in the user's knowledge base.
 Choose exactly one:
 - "merge": the new note says essentially the same thing as one candidate. Write the combined content.
 - "link": the new note and a candidate share an underlying subject but make distinct claims.
 - "new": the candidates address a different subject entirely.
-Respond with ONLY a JSON object, no other text, no markdown fences:
-{"decision": "merge" | "link" | "new", "target_note_id": "<uuid or null>", "merged_content": "<string or null>"}
+
+If your decision is "link", you MUST also choose a link_type that describes the specific relationship:
+- "supports": the new note provides evidence, an example, or direct agreement.
+- "contradicts": the new note explicitly opposes or refutes the candidate.
+- "elaborates": the new note adds nuance, a sub-point, or a deeper layer.
+- "related": a general, neutral connection (use as default if the relationship is vague).
+
+To ensure accuracy, briefly analyze the relationship, then respond with ONLY a JSON object, no other text, no markdown fences:
+{
+  "reasoning": "One short sentence explaining your thought process.",
+  "decision": "merge | link | new",
+  "target_note_id": "<uuid or null>",
+  "merged_content": "<string or null, only if decision is merge>",
+  "link_type": "<string, only if decision is link>"
+}
 """
+
 
 def _strip_code_fences(text):
     text = text.strip()

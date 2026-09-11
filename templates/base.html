@@ -8,14 +8,15 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 </head>
 <body>
-
+    
     <aside class="sidebar">
         <h2>My Knowledge Base</h2>
         <a href="/dashboard" {% if request.path == '/dashboard' %}class="active"{% endif %}>📊 Dashboard</a>
-        <a href="/notes" {% if request.path.startswith('/notes') %}class="active"{% endif %}>📝 Notes</a>
+        <a href="/notes" {% if request.path.startswith('/notes') and 'graph' not in request.path %}class="active"{% endif %}>📝 Notes</a>
+        <a href="/notes/graph" {% if request.path == '/notes/graph' %}class="active"{% endif %}>️📡 Graph</a>
         <a href="/outputs" {% if request.path.startswith('/outputs') %}class="active"{% endif %}>✨ Outputs</a>
         <a href="/search" {% if request.path == '/search' %}class="active"{% endif %}>🔍 Search</a>
-        
+
         {% if session.get('user_id') %}
             <div class="sidebar-footer">
                 <a href="/logout" class="link-danger">Log out</a>

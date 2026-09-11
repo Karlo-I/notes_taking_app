@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Graph{% endblock %}
+
+{% block content %}
+<div style="padding: 20px;">
+    <h2 style="color: #f0f6fc; margin-bottom: 10px;">Knowledge Graph</h2>
+    
+    <!-- Sleek Control Panel -->
+    <div class="graph-controls">
+        <div class="filter-group">
+            <span class="filter-label">Nodes</span>
+            <button class="filter-btn active" data-filter="node" data-value="Claim">Claims</button>
+            <button class="filter-btn active" data-filter="node" data-value="Reflection">Reflections</button>
+            <button class="filter-btn active" data-filter="node" data-value="Question">Questions</button>
+            <button class="filter-btn active" data-filter="node" data-value="Topic">Topics</button>
+        </div>
+        <div class="filter-group" style="margin-left: 10px;">
+            <span class="filter-label">Links</span>
+            <button class="filter-btn active" data-filter="edge" data-value="Supports">Supports</button>
+            <button class="filter-btn active" data-filter="edge" data-value="Contradicts">Contradicts</button>
+            <button class="filter-btn active" data-filter="edge" data-value="Elaborates">Elaborates</button>
+            <button class="filter-btn active" data-filter="edge" data-value="Related">Related</button>
+        </div>
+    </div>
+    
+    <!-- Graph Wrapper (Handles positioning) -->
+    <div style="position: relative; width: 100%; height: 75vh;">
+    
+        <!-- The actual graph canvas -->
+        <div id="graph-container" style="width: 100%; height: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px;"></div>
+        
+        <!-- Zoom Controls (Floating Top Right) -->
+        <div class="zoom-controls">
+            <button id="zoom-in" class="zoom-btn">+</button>
+            <button id="zoom-out" class="zoom-btn">−</button>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    .graph-controls {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 20px;
+        align-items: center;
+        padding: 0 5px;
+    }
+    .filter-group {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+    .filter-label {
+        color: #8b949e;
+        font-size: 11px;
+        font-weight: 600;
+        margin-right: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .filter-btn {
+        background: transparent;
+        border: 1px solid #30363d;
+        color: #8b949e;
+        padding: 4px 12px;
+        border-radius: 20px; /* Makes them pill-shaped */
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .filter-btn:hover {
+        border-color: #8b949e;
+        color: #c9d1d9;
+    }
+    
+    /* Active states: Colored border + faint background for a sleek look */
+    .filter-btn[data-value="Claim"].active { background: rgba(88, 166, 255, 0.15); border-color: #58a6ff; color: #58a6ff; }
+    .filter-btn[data-value="Reflection"].active { background: rgba(210, 153, 34, 0.15); border-color: #d29922; color: #d29922; }
+    .filter-btn[data-value="Question"].active { background: rgba(163, 113, 247, 0.15); border-color: #a371f7; color: #a371f7; }
+    .filter-btn[data-value="Topic"].active { background: rgba(35, 134, 54, 0.15); border-color: #238636; color: #238636; }
+    
+    .filter-btn[data-value="Supports"].active { background: rgba(63, 185, 80, 0.15); border-color: #3fb950; color: #3fb950; }
+    .filter-btn[data-value="Contradicts"].active { background: rgba(248, 81, 73, 0.15); border-color: #f85149; color: #f85149; }
+    .filter-btn[data-value="Elaborates"].active { background: rgba(88, 166, 255, 0.15); border-color: #58a6ff; color: #58a6ff; }
+    .filter-btn[data-value="Related"].active { background: rgba(139, 148, 158, 0.15); border-color: #8b949e; color: #8b949e; }
+
+    .zoom-controls {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        display: flex;
+        gap: 8px;
+        z-index: 100;
+    }
+    .zoom-btn {
+        background: #161b22;
+        border: 1px solid #30363d;
+        color: #c9d1d9;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+    .zoom-btn:hover {
+        background: #30363d;
+        color: #ffffff;
+    }
+
+    /* Override Vis.js default tooltip styling */
+    .vis-tooltip {
+        background-color: #161b22 !important;
+        color: #c9d1d9 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 6px !important;
+        padding: 8px 8px !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        font-size: 10px !important;
+        line-height: 1.4 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+        max-width: 300px !important;
+        white-space: normal !important;
+    }
+
+</style>
+
+<!-- Load Vis.js -->
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<script>
+    // Store the FULL datasets
+    const allNodes = new vis.DataSet({{ nodes_json | safe }});
+    const allEdges = new vis.DataSet({{ edges_json | safe }});
+
+    // Create working datasets that will be filtered
+    const nodes = new vis.DataSet();
+    const edges = new vis.DataSet();
+
+    // Initialize with all data
+    nodes.add(allNodes.get());
+    edges.add(allEdges.get());
+
+    const container = document.getElementById('graph-container');
+    const data = { nodes: nodes, edges: edges };
+
+    const options = {
+        physics: {
+            stabilization: false,
+            barnesHut: { gravitationalConstant: -3000, springLength: 200 }
+        },
+        interaction: { 
+            hover: true, 
+            tooltipDelay: 200,
+            // Custom styling to match your dark theme
+            tooltip: {
+                style: 'background-color: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.4; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 300px; white-space: normal;'
+            }
+        },
+        edges: { smooth: { type: 'continuous' } }
+    };
+
+    const network = new vis.Network(container, data, options);
+
+    // Click event: Open existing modal if a note is clicked
+    network.on("click", function (params) {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            if (!nodeId.startsWith('topic_')) {
+                loadNoteDetails(nodeId);
+            }
+        }
+    });
+
+    // --- FILTERING LOGIC ---
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Toggle the 'active' class
+            this.classList.toggle('active');
+            applyFilters();
+        });
+    });
+
+    function applyFilters() {
+        // 1. Get currently active filters
+        const activeNodeTypes = Array.from(document.querySelectorAll('.filter-btn[data-filter="node"].active'))
+                                     .map(btn => btn.dataset.value);
+        const activeEdgeTypes = Array.from(document.querySelectorAll('.filter-btn[data-filter="edge"].active'))
+                                     .map(btn => btn.dataset.value);
+
+        // 2. Filter Nodes
+        const filteredNodes = allNodes.get().filter(node => {
+            if (node.shape === 'box') {
+                return activeNodeTypes.includes('Topic');
+            }
+            // FIX: Check the 'group' property, not the 'label'
+            return activeNodeTypes.includes(node.group); 
+        });
+
+        // 3. Filter Edges (Keep this exactly as it was)
+        const filteredEdges = allEdges.get().filter(edge => {
+            if (!edge.title) return true; 
+            return activeEdgeTypes.includes(edge.title);
+        });
+
+        // 4. Update the working datasets
+        nodes.clear();
+        nodes.add(filteredNodes);
+        edges.clear();
+        edges.add(filteredEdges);
+    }
+
+    // --- ZOOM CONTROLS ---
+    document.getElementById('zoom-in').addEventListener('click', () => {
+        const currentScale = network.getScale();
+        network.moveTo({ scale: currentScale * 1.3, animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
+    });
+
+    document.getElementById('zoom-out').addEventListener('click', () => {
+        const currentScale = network.getScale();
+        network.moveTo({ scale: currentScale / 1.3, animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
+    });
+
+</script>
+{% endblock %}
