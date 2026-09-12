@@ -140,6 +140,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
   - **Tactical Tooltips:** Hovering over a node reveals a cleanly truncated, flattened snippet of the note's content, keeping the graph uncluttered but highly informative.
   - **Resilient Connections:** Upgraded the database connection pool to gracefully handle Neon's idle connection timeouts, preventing unexpected SSL drops.
 - **Graph Search & Highlight:** Added a sleek, fixed-width search bar to the Knowledge Graph control panel. Typing a keyword instantly dims non-matching nodes and highlights relevant ones, making navigation effortless without breaking the graph structure or causing layout shifts.
+- **Critical Database & Retrieval Stabilization:** Resolved silent data rollbacks by explicitly adding `conn.commit()` calls across `notes.py`, `review.py`, and `generate.py`. Hardened Row Level Security (RLS) policies for `critique_sessions` and `critique_turns` to prevent foreign key violations. Additionally, fixed JSON parsing errors in `retrieval.py` to handle malformed LLM responses gracefully, and temporarily used a backfill utility `fix_embeddings.py` to ensure all previously approved notes have valid vector embeddings for search.
 
 ## 12. Potential Future Adjustments to the Set Parameters
 
