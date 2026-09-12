@@ -76,10 +76,12 @@ def new():
                 )
                 note_id, saved_content = cur.fetchone()
 
+            conn.commit()
+
         embedding = embed_and_store(note_id, saved_content)
         run_integration(note_id, saved_content, embedding)
 
-        return redirect(url_for("notes.view", note_id=note_id))
+        return redirect(url_for("notes.index"))
 
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
@@ -92,6 +94,8 @@ def new():
                 (session["user_id"], note_type, content, classify_result["input_tokens"], classify_result["output_tokens"]),
             )
             note_id = cur.fetchone()[0]
+
+        conn.commit()
 
     begin_critique_session(note_id, note_type, content)
 
@@ -128,6 +132,7 @@ def delete(note_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM notes WHERE id = %s", (str(note_id),))
+        conn.commit()
     return redirect(url_for("notes.index"))
 
 

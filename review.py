@@ -39,6 +39,7 @@ def embed_and_store(note_id, content):
                 "UPDATE notes SET embedding = %s::vector WHERE id = %s",
                 (vector_literal(embedding), str(note_id)),
             )
+        conn.commit()
     return embedding
 
 
@@ -158,6 +159,7 @@ def begin_critique_session(note_id, note_type, content):
                 (str(note_id),),
             )
             session_id = cur.fetchone()[0]
+        conn.commit()
 
     # Connection closed above -- now the slow part, no connection held open.
     result = get_critic_reply(note_type, content, transcript=[], turn_number=1, turn_cap=TURN_CAP)
@@ -177,6 +179,7 @@ def begin_critique_session(note_id, note_type, content):
                 "UPDATE critique_sessions SET critic_input_tokens = %s, critic_output_tokens = %s WHERE id = %s",
                 (inp_tokens, out_tokens, str(session_id)),
             )
+        conn.commit()
 
 
 @review_bp.route("/<uuid:note_id>/review/start", methods=["POST"])
@@ -291,6 +294,7 @@ def reply(note_id):
     # reply will be the Nth time the critic has pushed back.
     critic_turn_number = sum(1 for role, _, _ in rows if role == "critic") + 1
 
+    # Save user's reply
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -298,6 +302,7 @@ def reply(note_id):
                 "VALUES (%s, %s, 'user', %s)",
                 (str(session_id), next_turn_number, user_reply),
             )
+        conn.commit()
 
     transcript.append({"role": "user", "content": user_reply})
     result = get_critic_reply(
@@ -320,6 +325,7 @@ def reply(note_id):
                 "UPDATE critique_sessions SET critic_input_tokens = critic_input_tokens + %s, critic_output_tokens = critic_output_tokens + %s WHERE id = %s",
                 (inp_tokens, out_tokens, str(session_id)),
             )
+        conn.commit()
 
     return redirect(url_for("review.view", note_id=note_id))
 
@@ -363,6 +369,7 @@ def approve(note_id):
                 (edited_content, str(note_id)),
             )
             row = cur.fetchone()
+        conn.commit()
 
     if row:
         embedding = embed_and_store(note_id, row[0])
@@ -371,4 +378,4 @@ def approve(note_id):
         # Extract and save topics for this note
         extract_and_save_topics(session["user_id"], note_id, row[0]) 
 
-    return redirect(url_for("notes.view", note_id=note_id))
+    return redirect(url_for("notes.index"))

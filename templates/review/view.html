@@ -62,7 +62,9 @@
         function editNote() {
             const textarea = document.getElementById('note-content');
             textarea.disabled = false;
-            textarea.style.backgroundColor = 'white';
+            textarea.style.backgroundColor = '#161b22';
+            textarea.style.color = '#f0f6fc';
+            textarea.style.borderColor = '#58a6ff'; // Adds a nice focus glow
             textarea.focus();
         }
         

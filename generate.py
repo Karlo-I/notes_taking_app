@@ -142,6 +142,7 @@ def generate_output(user_id: str, topic_query: str, output_type: str, is_regener
                     "INSERT INTO output_sources (output_id, note_id) VALUES (%s, %s)",
                     (str(output_row[0]), n["id"]),
                 )
+        conn.commit()
 
     return {
         "id": str(output_row[0]),

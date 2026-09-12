@@ -48,14 +48,23 @@ Example output: ["123e4567-e89b-12d3-a456-426614174000"] or []"""
         )
         raw_text = response.content[0].text.strip()
         
-        # Clean markdown fences if the LLM adds them
-        if raw_text.startswith("```"):
-            raw_text = raw_text.split("\n", 1)[1] if "\n" in raw_text else raw_text[3:]
-            if raw_text.rstrip().endswith("```"):
-                raw_text = raw_text.rstrip()[:-3]
+        # ROBUST JSON EXTRACTION: Find the first [ and last ]
+        start = raw_text.find('[')
+        end = raw_text.rfind(']')
         
-        topic_ids = json.loads(raw_text)
-        return topic_ids if isinstance(topic_ids, list) else []
+        if start == -1 or end == -1 or end <= start:
+            print(f"No valid JSON array found in response: {raw_text}")
+            return []
+        
+        json_text = raw_text[start:end+1]
+        
+        try:
+            topic_ids = json.loads(json_text)
+            return topic_ids if isinstance(topic_ids, list) else []
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse JSON: {json_text}\nError: {e}")
+            return []
+            
     except Exception as e:
         print(f"Topic identification failed: {e}")
         return []
