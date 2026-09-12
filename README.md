@@ -139,6 +139,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
   - **Client-Side Filtering:** Sleek, multi-select toggle pills allow users to instantly filter nodes by type and links by relationship.
   - **Tactical Tooltips:** Hovering over a node reveals a cleanly truncated, flattened snippet of the note's content, keeping the graph uncluttered but highly informative.
   - **Resilient Connections:** Upgraded the database connection pool to gracefully handle Neon's idle connection timeouts, preventing unexpected SSL drops.
+- **Graph Search & Highlight:** Added a sleek, fixed-width search bar to the Knowledge Graph control panel. Typing a keyword instantly dims non-matching nodes and highlights relevant ones, making navigation effortless without breaking the graph structure or causing layout shifts.
 
 ## 12. Potential Future Adjustments to the Set Parameters
 

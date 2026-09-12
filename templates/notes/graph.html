@@ -3,7 +3,7 @@
 {% block title %}Knowledge Graph{% endblock %}
 
 {% block content %}
-<div style="padding: 20px;">
+<div style="padding: 0 20px 20px 20px;">
     <h2 style="color: #f0f6fc; margin-bottom: 10px;">Knowledge Graph</h2>
     
     <!-- Sleek Control Panel -->
@@ -22,13 +22,19 @@
             <button class="filter-btn active" data-filter="edge" data-value="Elaborates">Elaborates</button>
             <button class="filter-btn active" data-filter="edge" data-value="Related">Related</button>
         </div>
+
+        <!-- NEW: Search Bar -->
+        <div class="search-container">
+            <input type="text" id="graph-search" placeholder="Search nodes..." autocomplete="off">
+        </div>
+
     </div>
     
-    <!-- Graph Wrapper (Handles positioning) -->
-    <div style="position: relative; width: 100%; height: 75vh;">
+        <!-- Graph Wrapper (Handles positioning) -->
+        <div style="position: relative; width: 100%; height: 75vh; background: #0d1117;">
     
-        <!-- The actual graph canvas -->
-        <div id="graph-container" style="width: 100%; height: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px;"></div>
+            <!-- The actual graph canvas -->
+            <div id="graph-container" style="width: 100%; height: 100%; background: transparent;"></div>
         
         <!-- Zoom Controls (Floating Top Right) -->
         <div class="zoom-controls">
@@ -47,6 +53,7 @@
         margin-bottom: 20px;
         align-items: center;
         padding: 0 5px;
+        flex-wrap: nowrap;
     }
     .filter-group {
         display: flex;
@@ -66,7 +73,7 @@
         border: 1px solid #30363d;
         color: #8b949e;
         padding: 4px 12px;
-        border-radius: 20px; /* Makes them pill-shaped */
+        border-radius: 20px;
         cursor: pointer;
         font-size: 11px;
         font-weight: 600;
@@ -130,6 +137,39 @@
         white-space: normal !important;
     }
 
+    /* Search Bar Styling - FIXED TO PREVENT LAYOUT SHIFT */
+    .search-container {
+        margin-left: auto;
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        width: 200px; /* STRICTLY FIXED CONTAINER WIDTH */
+    }
+    #graph-search {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        color: #c9d1d9;
+        padding: 6px 12px 6px 32px;
+        border-radius: 20px;
+        font-size: 12px;
+        outline: none;
+        width: 100%; /* FILLS THE 200PX CONTAINER, NEVER CHANGES */
+        box-sizing: border-box;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: 10px center;
+        /* NO WIDTH TRANSITION */
+    }
+    #graph-search::placeholder {
+        color: #6e7681;
+    }
+    #graph-search:focus {
+        border-color: #58a6ff;
+        /* NO WIDTH CHANGE, NO BOX-SHADOW THAT COULD CAUSE SHIFT */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2358a6ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+    }
+
 </style>
 
 <!-- Load Vis.js -->
@@ -159,7 +199,6 @@
         interaction: { 
             hover: true, 
             tooltipDelay: 200,
-            // Custom styling to match your dark theme
             tooltip: {
                 style: 'background-color: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.4; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 300px; white-space: normal;'
             }
@@ -184,40 +223,55 @@
     
     filterBtns.forEach(btn => {
         btn.addEventListener('click', function() {
-            // Toggle the 'active' class
             this.classList.toggle('active');
             applyFilters();
         });
     });
 
     function applyFilters() {
-        // 1. Get currently active filters
         const activeNodeTypes = Array.from(document.querySelectorAll('.filter-btn[data-filter="node"].active'))
                                      .map(btn => btn.dataset.value);
         const activeEdgeTypes = Array.from(document.querySelectorAll('.filter-btn[data-filter="edge"].active'))
                                      .map(btn => btn.dataset.value);
 
-        // 2. Filter Nodes
         const filteredNodes = allNodes.get().filter(node => {
             if (node.shape === 'box') {
                 return activeNodeTypes.includes('Topic');
             }
-            // FIX: Check the 'group' property, not the 'label'
             return activeNodeTypes.includes(node.group); 
         });
 
-        // 3. Filter Edges (Keep this exactly as it was)
         const filteredEdges = allEdges.get().filter(edge => {
             if (!edge.title) return true; 
             return activeEdgeTypes.includes(edge.title);
         });
 
-        // 4. Update the working datasets
         nodes.clear();
         nodes.add(filteredNodes);
         edges.clear();
         edges.add(filteredEdges);
     }
+
+    // --- SEARCH & HIGHLIGHT LOGIC ---
+    const searchInput = document.getElementById('graph-search');
+    
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        const allNodesArray = allNodes.get();
+        
+        const updatedNodes = allNodesArray.map(node => {
+            const textToSearch = (node.title || node.label || '').toLowerCase();
+            let opacity = 1;
+
+            if (query.length > 0 && !textToSearch.includes(query)) {
+                opacity = 0.15; 
+            }
+
+            return { ...node, opacity: opacity };
+        });
+
+        nodes.update(updatedNodes);
+    });
 
     // --- ZOOM CONTROLS ---
     document.getElementById('zoom-in').addEventListener('click', () => {
