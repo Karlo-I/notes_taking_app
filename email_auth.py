@@ -65,7 +65,7 @@ def register():
     return render_template('email_auth.html')
 
 @email_auth_bp.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("20 per minute")
 def login():
     email = request.form.get('email', '').strip().lower()
     password = request.form.get('password', '')
