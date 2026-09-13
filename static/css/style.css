@@ -152,6 +152,15 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 
 .sidebar.collapsed .nav-item { justify-content: center; padding: 8px; }
 
+/* --- Icon Swapping Logic (DESKTOP) --- */
+/* Default state (Expanded): Show left arrow, hide right arrow */
+.icon-collapse { display: inline-block !important; }
+.icon-expand { display: none !important; }
+
+/* Collapsed state: Hide left arrow, show right arrow */
+.sidebar.collapsed .icon-collapse { display: none !important; }
+.sidebar.collapsed .icon-expand { display: inline-block !important; }
+
 .sidebar.collapsed .nav-item:hover::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -399,15 +408,6 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .sidebar.open {
         transform: translateX(0) !important;
     }
-
-    /* --- Icon Swapping Logic --- */
-    /* When expanded: show left arrow, hide right arrow */
-    .sidebar:not(.collapsed) .icon-collapse { display: inline-block !important; }
-    .sidebar:not(.collapsed) .icon-expand { display: none !important; }
-
-    /* When collapsed: hide left arrow, show right arrow */
-    .sidebar.collapsed .icon-collapse { display: none !important; }
-    .sidebar.collapsed .icon-expand { display: inline-block !important; }
 
     /* --- CRITICAL FIXES FOR THE "COLLAPSED" STATE ON MOBILE --- */
     
