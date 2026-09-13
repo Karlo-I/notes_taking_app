@@ -4,17 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Notes App{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=5"> <!-- Bumped version to force cache clear -->
+    <link rel="stylesheet" href="/static/css/style.css?v=7"> <!-- Bumped version -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     
     <aside class="sidebar" id="sidebar">
-        <!-- INSTANTIOUS STATE RESTORE (Prevents the 'Snap' effect) -->
+        <!-- INSTANT STATE RESTORE -->
         <script>
             (function() {
-                // Only apply collapsed state if we are on DESKTOP right now
                 if (window.innerWidth > 768 && localStorage.getItem('sidebarState') === 'collapsed') {
                     document.getElementById('sidebar').classList.add('collapsed');
                 }
@@ -54,9 +53,10 @@
                 <i data-lucide="user"></i>
                 <span class="nav-text">{{ session.get('user_email') or session.get('email') or session.get('username') or 'User' }}</span>
             </div>
-            <!-- Collapse button is hidden on mobile via CSS -->
+            <!-- Collapse button -->
             <button class="nav-item collapse-btn" id="collapse-btn" data-tooltip="Collapse">
-                <i data-lucide="panel-left-close"></i>
+                <i data-lucide="panel-left-close" class="icon-collapse"></i>
+                <i data-lucide="panel-right-close" class="icon-expand" style="display: none;"></i>
                 <span class="nav-text">Collapse</span>
             </button>
             <a href="{{ url_for('logout') }}" class="nav-item" data-tooltip="Log out">
@@ -66,13 +66,13 @@
         </div>
     </aside>
 
-    <!-- Mobile Header (Hidden on Desktop) -->
+    <!-- Mobile Header -->
     <div class="mobile-header">
         <button class="hamburger" id="hamburger-btn">
             <i data-lucide="menu"></i>
         </button>
         <span style="font-weight: 600; font-size: 15px; color: #f0f6fc;">My Knowledge Base</span>
-        <div style="width: 24px;"></div> <!-- Spacer for centering -->
+        <div style="width: 24px;"></div>
     </div>
 
     <main class="main-content">
@@ -225,6 +225,7 @@
         });
     </script>
 
+    <!-- Sidebar Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -233,31 +234,35 @@
             const collapseBtn = document.getElementById('collapse-btn');
             const hamburgerBtn = document.getElementById('hamburger-btn');
 
+            // Helper to update Tooltip ONLY (CSS now handles the icons)
+            function updateCollapseUI(isCollapsed) {
+                if (collapseBtn) {
+                    collapseBtn.setAttribute('data-tooltip', isCollapsed ? 'Expand' : 'Collapse');
+                }
+            }
+
             // --- 1. INSTANT RESIZE HANDLER ---
             function handleResize() {
                 const isMobile = window.innerWidth <= 768;
                 const savedState = localStorage.getItem('sidebarState');
+                const isCollapsed = savedState === 'collapsed';
                 
                 if (!isMobile) {
-                    // WE ARE ON DESKTOP
+                    // Desktop: Apply state and UPDATE ICON
                     sidebar.classList.remove('open');
-                    
-                    // INSTANTLY apply the saved state
-                    if (savedState === 'collapsed') {
+                    if (isCollapsed) {
                         sidebar.classList.add('collapsed');
                     } else {
                         sidebar.classList.remove('collapsed');
                     }
+                    updateCollapseUI(isCollapsed);
                 } else {
-                    // WE ARE ON MOBILE
+                    // Mobile: Close drawer
                     sidebar.classList.remove('open');
                 }
             }
 
-            // Run immediately on load
             handleResize();
-
-            // Run INSTANTLY on resize (No delay!)
             window.addEventListener('resize', handleResize);
 
             // --- 2. DESKTOP COLLAPSE ---
@@ -269,13 +274,7 @@
                     const isNowCollapsed = sidebar.classList.contains('collapsed');
                     localStorage.setItem('sidebarState', isNowCollapsed ? 'collapsed' : 'expanded');
                     
-                    if (typeof lucide !== 'undefined') {
-                        const collapseIcon = collapseBtn.querySelector('i');
-                        if (collapseIcon) {
-                            collapseIcon.setAttribute('data-lucide', isNowCollapsed ? 'panel-left-open' : 'panel-left-close');
-                            lucide.createIcons();
-                        }
-                    }
+                    updateCollapseUI(isNowCollapsed);
                 });
             }
 

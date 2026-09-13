@@ -400,6 +400,15 @@ body.login-body { display: flex !important; justify-content: center; align-items
         transform: translateX(0) !important;
     }
 
+    /* --- Icon Swapping Logic --- */
+    /* When expanded: show left arrow, hide right arrow */
+    .sidebar:not(.collapsed) .icon-collapse { display: inline-block !important; }
+    .sidebar:not(.collapsed) .icon-expand { display: none !important; }
+
+    /* When collapsed: hide left arrow, show right arrow */
+    .sidebar.collapsed .icon-collapse { display: none !important; }
+    .sidebar.collapsed .icon-expand { display: inline-block !important; }
+
     /* --- CRITICAL FIXES FOR THE "COLLAPSED" STATE ON MOBILE --- */
     
     /* Fix 1: Force text to reappear when drawer is open */
