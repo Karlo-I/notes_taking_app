@@ -6,6 +6,7 @@
     <title>{% block title %}Notes App{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css?v=4">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     
@@ -275,5 +276,13 @@
         });
 
     </script>
+
+    <script>
+        // Initialize Lucide icons when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+    </script>
+
 </body>
 </html>
