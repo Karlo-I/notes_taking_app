@@ -157,7 +157,7 @@ def search():
                 )
                 results = cur.fetchall()
     
-    return render_template("notes/search.html", query=query, results=results)
+    return render_template("search.html", query=query, results=results)
 
 
 @notes_bp.route("/graph")
