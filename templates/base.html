@@ -10,24 +10,65 @@
 </head>
 <body>
     
-    <aside class="sidebar">
-        <h2>My Knowledge Base</h2>
-        <a href="/dashboard" {% if request.path == '/dashboard' %}class="active"{% endif %}>📊 Dashboard</a>
-        <a href="/notes" {% if request.path.startswith('/notes') and 'graph' not in request.path %}class="active"{% endif %}>📝 Notes</a>
-        <a href="/notes/graph" {% if request.path == '/notes/graph' %}class="active"{% endif %}>️📡 Graph</a>
-        <a href="/outputs" {% if request.path.startswith('/outputs') %}class="active"{% endif %}>✨ Outputs</a>
-        <a href="/search" {% if request.path == '/search' %}class="active"{% endif %}>🔍 Search</a>
+    <aside class="sidebar" id="sidebar">
+        <!-- ANTI-FLASH SCRIPT: Runs instantly before the browser paints the sidebar -->
+        <script>
+            if (localStorage.getItem('sidebarState') === 'collapsed') {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        </script>
 
-        {% if session.get('user_id') %}
-            <div class="sidebar-footer">
-                <a href="/logout" class="link-danger">Log out</a>
+        <div class="sidebar-header">
+            <i data-lucide="book-open" class="logo-icon"></i>
+            <span class="logo-text">My Knowledge Base</span>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <!-- Fixed: dashboard instead of dashboard.index -->
+            <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard' }}" data-tooltip="Dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="{{ url_for('notes.index') }}" class="nav-item {{ 'active' if request.endpoint == 'notes.index' }}" data-tooltip="Notes">
+                <i data-lucide="file-text"></i>
+                <span class="nav-text">Notes</span>
+            </a>
+            <a href="{{ url_for('notes.graph_view') }}" class="nav-item {{ 'active' if request.endpoint == 'notes.graph_view' }}" data-tooltip="Graph">
+                <i data-lucide="network"></i>
+                <span class="nav-text">Graph</span>
+            </a>
+            <a href="{{ url_for('outputs.index') }}" class="nav-item {{ 'active' if request.endpoint == 'outputs.index' }}" data-tooltip="Outputs">
+                <i data-lucide="sparkles"></i>
+                <span class="nav-text">Outputs</span>
+            </a>
+            <a href="{{ url_for('notes.search') }}" class="nav-item {{ 'active' if request.endpoint == 'notes.search' }}" data-tooltip="Search">
+                <i data-lucide="search"></i>
+                <span class="nav-text">Search</span>
+            </a>
+        </nav>
+    
+        <div class="sidebar-footer">
+            <div class="user-email">
+                <i data-lucide="user"></i>
+                <!-- Fixed: Check multiple common session keys for email/username -->
+                <span class="nav-text">{{ session.get('user_email') or session.get('email') or session.get('username') or 'User' }}</span>
             </div>
-        {% endif %}
+            <button class="nav-item collapse-btn" id="collapse-btn" data-tooltip="Collapse">
+                <i data-lucide="panel-left-close"></i>
+                <span class="nav-text">Collapse</span>
+            </button>
+            <a href="{{ url_for('logout') }}" class="nav-item" data-tooltip="Log out">
+                <i data-lucide="log-out"></i>
+                <span class="nav-text">Log out</span>
+            </a>
+        </div>
     </aside>
 
     <div class="mobile-header">
-        <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
-        <span style="font-weight: 600; font-size: 15px;">My Knowledge Base</span>
+        <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+            <i data-lucide="menu"></i>
+        </button>
+        <span style="font-weight: 600; font-size: 15px; color: #f0f6fc;">My Knowledge Base</span>
         <div style="width: 24px;"></div> <!-- Spacer for centering -->
     </div>
 
@@ -278,9 +319,45 @@
     </script>
 
     <script>
-        // Initialize Lucide icons when the page loads
         document.addEventListener('DOMContentLoaded', function() {
-            lucide.createIcons();
+            // 1. Initialize Icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+                
+                // If sidebar is already collapsed on load, swap the button icon
+                const sidebar = document.getElementById('sidebar');
+                const collapseBtn = document.getElementById('collapse-btn');
+                if (sidebar && sidebar.classList.contains('collapsed') && collapseBtn) {
+                    const collapseIcon = collapseBtn.querySelector('i');
+                    if (collapseIcon) {
+                        collapseIcon.setAttribute('data-lucide', 'panel-left-open');
+                        lucide.createIcons();
+                    }
+                }
+            }
+
+            // 2. Handle the Click
+            const collapseBtn = document.getElementById('collapse-btn');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (collapseBtn && sidebar) {
+                collapseBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                    const isNowCollapsed = sidebar.classList.contains('collapsed');
+                    
+                    // Save to memory
+                    localStorage.setItem('sidebarState', isNowCollapsed ? 'collapsed' : 'expanded');
+                    
+                    // Swap icon
+                    if (typeof lucide !== 'undefined') {
+                        const collapseIcon = collapseBtn.querySelector('i');
+                        if (collapseIcon) {
+                            collapseIcon.setAttribute('data-lucide', isNowCollapsed ? 'panel-left-open' : 'panel-left-close');
+                            lucide.createIcons();
+                        }
+                    }
+                });
+            }
         });
     </script>
 

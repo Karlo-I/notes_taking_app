@@ -59,6 +59,7 @@ def register():
         # 3. CRITICAL FIX: Clear any lingering session data before logging in
         session.clear()
         session['user_id'] = str(user_id)
+        session['user_email'] = email
         
         return redirect(url_for('notes.index'))
 
@@ -81,4 +82,5 @@ def login():
                 return redirect(url_for('email_auth.register'))
 
             session['user_id'] = str(user[0])
+            session['user_email'] = email
             return redirect(url_for('notes.index'))

@@ -90,18 +90,23 @@ def callback(provider):
         return redirect(url_for("index"))
 
     if provider == "google":
-        # authlib validates the id_token and populates this automatically
-        # because we registered with the "openid" scope.
         profile = token["userinfo"]
         subject_id = profile["sub"]
         display_name = profile.get("name") or profile.get("email")
+        # ADD THIS: Save email to session for the sidebar
+        session["user_email"] = profile.get("email", "")
+        
     elif provider == "github":
         profile = client.get("user").json()
         subject_id = str(profile["id"])
         display_name = profile.get("name") or profile.get("login")
+        # ADD THIS: Save email (or login if email is private) to session for the sidebar
+        session["user_email"] = profile.get("email") or profile.get("login", "")
+        
     else:
         abort(404)
 
     user_id = upsert_user(provider, subject_id, display_name)
     session["user_id"] = str(user_id)
+    
     return redirect(url_for("index"))
