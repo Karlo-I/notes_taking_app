@@ -359,37 +359,104 @@ body.login-body { display: flex !important; justify-content: center; align-items
 .footer-social a:hover { text-decoration: underline; color: var(--primary-hover); }
 
 /* ====================================================================
-   8. MOBILE RESPONSIVENESS
+   8. MOBILE RESPONSIVENESS (Full-Height Drawer)
    ==================================================================== */
-.mobile-header { display: none; }
+
+/* Base Mobile Header (Hidden on Desktop) */
+.mobile-header { 
+    display: none; 
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-color);
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    z-index: 1000; /* Lower than sidebar */
+}
 .hamburger { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-primary); }
 
 @media (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
-        width: var(--sidebar-width) !important;
-        box-shadow: var(--shadow-lg);
-    }
-    .sidebar.open { transform: translateX(0); }
     
+    /* 1. FORCE SIDEBAR TO BE A FULL-HEIGHT MOBILE DRAWER */
+    .sidebar, 
+    .sidebar.collapsed {
+        position: fixed !important;
+        top: 0 !important; /* CHANGED: Start at the very top, covering the header */
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 260px !important; /* Full width drawer */
+        transform: translateX(-100%) !important; /* Hidden by default */
+        transition: transform 0.3s ease !important;
+        z-index: 1001 !important; /* HIGHER than mobile header */
+        box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+        background: var(--bg-sidebar) !important;
+        border-right: none !important;
+    }
+
+    /* Only show sidebar when explicitly opened via Hamburger */
+    .sidebar.open {
+        transform: translateX(0) !important;
+    }
+
+    /* --- CRITICAL FIXES FOR THE "COLLAPSED" STATE ON MOBILE --- */
+    
+    /* Fix 1: Force text to reappear when drawer is open */
+    .sidebar.open .nav-text,
+    .sidebar.open .logo-text,
+    .sidebar.open .user-email {
+        display: block !important; 
+    }
+
+    /* Fix 2: Force icons to align left when drawer is open */
+    .sidebar.open .nav-item {
+        justify-content: flex-start !important; 
+    }
+
+    /* Hide the desktop collapse button on mobile */
+    .collapse-btn {
+        display: none !important;
+    }
+
+    /* 2. SHOW MOBILE HEADER */
     .mobile-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px;
-        background: var(--bg-sidebar);
-        border-bottom: 1px solid var(--border-color);
-        position: sticky; top: 0; z-index: 50;
+        display: flex !important;
     }
-    
-    .main-content {
-        margin-left: 0 !important;
+
+    /* 3. MAIN CONTENT LAYOUT */
+    .main-content,
+    .sidebar.collapsed ~ .main-content {
+        margin-left: 0 !important; 
+        margin-top: 60px !important; /* Space for the fixed header */
         width: 100% !important;
-        padding: 20px 16px !important;
+        padding: 20px 16px 24px 16px !important;
+        box-sizing: border-box;
+    }
+
+    /* Mobile Typography & Components */
+    .main-content h1 { 
+        margin-top: 0 !important;
+        margin-bottom: 20px !important;
+        font-size: 20px;
     }
     
-    .main-content h1 { margin-top: 0 !important; margin-bottom: 16px !important; font-size: 22px; }
-    .page-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 16px !important; }
+    .page-header { 
+        flex-direction: column; 
+        align-items: flex-start; 
+        gap: 12px; 
+        margin-bottom: 16px !important;
+    }
+    
     .search-input-group { flex-direction: column; }
     .review-actions { flex-wrap: wrap; }
+    
+    .card {
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+    }
+    
+    .app-footer {
+        margin-top: 40px !important;
+    }
 }
