@@ -10,4 +10,4 @@ source .venv/bin/activate
 
 # 3. Start the Flask app
 nohup python wsgi.py > app.log 2>&1 &
-echo "✅ App started! Visit http://127.0.0.1:5000"
+echo "✅ App started! Visit http://127.0.0.1:5002"
