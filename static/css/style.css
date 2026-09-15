@@ -375,11 +375,39 @@ body.login-body { display: flex !important; justify-content: center; align-items
     background: var(--bg-sidebar);
     border-bottom: 1px solid var(--border-color);
     position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 48px; /* FIXED: Matched to content margin */
+    top: 0; 
+    left: 0; 
+    right: 0;
+    height: 48px;
+    max-height: 48px;
     z-index: 1000;
+    overflow: hidden;
 }
-.hamburger { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-primary); }
+
+/* CRITICAL: Prevent any child elements from stretching the header */
+.mobile-header * {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+
+.mobile-header h1,
+.mobile-header h2,
+.mobile-header h3 {
+    font-size: 16px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.hamburger { 
+    background: none; 
+    border: none; 
+    font-size: 24px; 
+    cursor: pointer; 
+    color: var(--text-primary);
+    margin: 0 !important;
+    padding: 0 !important;
+}
 
 @media (max-width: 768px) {
     
@@ -401,7 +429,6 @@ body.login-body { display: flex !important; justify-content: center; align-items
 
     .sidebar.open { transform: translateX(0) !important; }
     
-    /* Force text to reappear when drawer is open */
     .sidebar.open .nav-text,
     .sidebar.open .logo-text,
     .sidebar.open .user-email { display: block !important; }
@@ -409,7 +436,13 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .collapse-btn { display: none !important; }
 
     /* 2. SHOW & FIX MOBILE HEADER */
-    .mobile-header { display: flex !important; }
+    .mobile-header { 
+        display: flex !important;
+        height: 48px !important;
+        max-height: 48px !important;
+        min-height: 48px !important;
+    }
+    
     .sidebar.collapsed ~ .mobile-header {
         margin-left: 0 !important;
         width: 100% !important;
@@ -419,7 +452,7 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .main-content,
     .sidebar.collapsed ~ .main-content {
         margin-left: 0 !important; 
-        margin-top: 48px !important; /* FIXED: Matched to header height */
+        margin-top: 48px !important;
         width: 100% !important;
         padding: 20px 16px 24px 16px !important;
         box-sizing: border-box;
@@ -432,20 +465,4 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .review-actions { flex-wrap: wrap; }
     .card { padding: 16px !important; margin-bottom: 12px !important; }
     .app-footer { margin-top: 40px !important; }
-}
-
-/* EMERGENCY FIX: Force Mobile Header Size */
-@media (max-width: 768px) {
-    .mobile-header {
-        height: 50px !important;
-        min-height: 50px !important;
-        max-height: 50px !important;
-        padding: 0 16px !important;
-        line-height: 50px !important;
-    }
-    
-    /* Fix the gap below the header */
-    .main-content {
-        margin-top: 50px !important; 
-    }
 }
