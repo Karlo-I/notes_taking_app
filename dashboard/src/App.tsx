@@ -125,15 +125,16 @@ function App() {
             />
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '20px' }}>
+          <div className='year-btn-group' style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '20px' }}>
             {years.map(year => (
               <button 
                 key={year} 
+                className='year-btn'
                 onClick={() => setSelectedYear(year)} 
                 style={{ 
-                  width: '40px', 
-                  height: '24px', 
-                  fontSize: '10px', 
+                  width: '32px', 
+                  height: '20px', 
+                  fontSize: '9px', 
                   padding: '0',
                   display: 'flex', 
                   alignItems: 'center', 
@@ -153,13 +154,13 @@ function App() {
 
         </div>
         <div className='heatmap-legend'>
-          <span style={{ fontSize: '11px', color: '#8b949e' }}>Less</span>
-          <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#161b22', border: '1px solid #30363d' }}></div>
-          <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#0e4429' }}></div>
-          <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#006d32' }}></div>
-          <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#26a641' }}></div>
-          <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#39d353' }}></div>
-          <span style={{ fontSize: '11px', color: '#8b949e' }}>More</span>
+          <span>Less</span>
+          <div className="legend-box" style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}></div>
+          <div className="legend-box" style={{ backgroundColor: '#0e4429' }}></div>
+          <div className="legend-box" style={{ backgroundColor: '#006d32' }}></div>
+          <div className="legend-box" style={{ backgroundColor: '#26a641' }}></div>
+          <div className="legend-box" style={{ backgroundColor: '#39d353' }}></div>
+          <span>More</span>
         </div>
       </div>
 

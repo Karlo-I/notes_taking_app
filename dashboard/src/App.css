@@ -29,8 +29,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  margin-top: 12px;
-  font-size: 12px;
+  margin-top: 2px;
+  font-size: 11px;
   color: #8b949e;
 }
 .legend-box {
@@ -50,7 +50,7 @@
   transition: all 0.2s;
 }
 
-/* Mobile Optimizations */
+/* Mobile Optimizations (Tuned for 375px width) */
 @media (max-width: 768px) {
   .stats-grid-mobile {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -68,14 +68,39 @@
     min-height: 70px !important;
   }
   
-  /* Heatmap & Year Buttons */
+  /* Heatmap fits the 375px screen better now */
   .react-calendar-heatmap {
-    min-width: 500px !important;
+    min-width: 320px !important; 
   }
+
+  /* Button container alignment */
+  .year-btn-group {
+    margin-top: 10px !important;
+    gap: 2px !important;
+  }
+
+  /* Aggressive button shrinking */
   .year-btn {
-    width: 40px !important;
-    height: 24px !important;
-    font-size: 10px !important;
-    padding: 0 !important;
+    box-sizing: border-box !important; /* Ensures border doesn't add to height */
+    width: 20px !important;
+    height: 8px !important; /* Very short to match small heatmap */
+    font-size: 4px !important;
+    line-height: 1 !important; /* Removes default text spacing */
+    border-radius: 3px !important;
+    padding: 0 !important; /* Removes default button padding */
+    margin: 0 !important; /* Removes default button margin */
   }
+
+  /* Shrink the legend text and spacing */
+  .heatmap-legend {
+    gap: 2px !important;
+    font-size: 7px !important;
+  }
+
+  /* Shrink the color boxes */
+  .legend-box {
+    width: 6px !important;
+    height: 6px !important;
+  }
+
 }
