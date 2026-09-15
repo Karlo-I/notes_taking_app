@@ -448,7 +448,7 @@ body.login-body { display: flex !important; justify-content: center; align-items
         width: 100% !important;
     }
 
-    /* 3. MAIN CONTENT LAYOUT */
+    /* 3. MAIN CONTENT LAYOUT (Merged & Fixed) */
     .main-content,
     .sidebar.collapsed ~ .main-content {
         margin-left: 0 !important; 
@@ -456,6 +456,11 @@ body.login-body { display: flex !important; justify-content: center; align-items
         width: 100% !important;
         padding: 20px 16px 24px 16px !important;
         box-sizing: border-box;
+        
+        /* Footer push-down logic added here */
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: calc(100vh - 48px) !important; 
     }
 
     /* Mobile Typography & Components */
@@ -464,5 +469,10 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .search-input-group { flex-direction: column; }
     .review-actions { flex-wrap: wrap; }
     .card { padding: 16px !important; margin-bottom: 12px !important; }
-    .app-footer { margin-top: 40px !important; }
+    
+    /* 4. FOOTER FIX (Cleaned) */
+    .app-footer {
+        margin-top: auto !important; /* Pushes footer to the absolute bottom */
+        margin-bottom: 0 !important;
+    }
 }
