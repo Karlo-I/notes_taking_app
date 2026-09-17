@@ -26,10 +26,6 @@
         </div>
         
         <nav class="sidebar-nav">
-            <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard' }}" data-tooltip="Dashboard">
-                <i data-lucide="layout-dashboard"></i>
-                <span class="nav-text">Dashboard</span>
-            </a>
             <a href="{{ url_for('notes.index') }}" class="nav-item {{ 'active' if request.endpoint == 'notes.index' }}" data-tooltip="Notes">
                 <i data-lucide="file-text"></i>
                 <span class="nav-text">Notes</span>
@@ -41,6 +37,10 @@
             <a href="{{ url_for('outputs.index') }}" class="nav-item {{ 'active' if request.endpoint == 'outputs.index' }}" data-tooltip="Outputs">
                 <i data-lucide="sparkles"></i>
                 <span class="nav-text">Outputs</span>
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard' }}" data-tooltip="Dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span class="nav-text">Dashboard</span>
             </a>
             <a href="{{ url_for('notes.search') }}" class="nav-item {{ 'active' if request.endpoint == 'notes.search' }}" data-tooltip="Search">
                 <i data-lucide="search"></i>
@@ -184,7 +184,7 @@
         }
 
         function openNewOutputModal() {
-            const body = `<form id="new-output-form" onsubmit="submitNewOutput(event)"><textarea name="topic_query" class="form-control mb-4" rows="4" placeholder="e.g. What have I learned about FATCA compliance?" required></textarea><select name="output_type" class="form-control"><option value="qna">Q&A Document</option><option value="narration">Narration Script</option><option value="summary">Topic Summary</option></select></form>`;
+            const body = `<form id="new-output-form" onsubmit="submitNewOutput(event)"><textarea name="topic_query" class="form-control mb-4" rows="4" placeholder="e.g. Enter your note here" required></textarea><select name="output_type" class="form-control"><option value="qna">Q&A Document</option><option value="narration">Narration Script</option><option value="summary">Topic Summary</option></select></form>`;
             const footer = `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button><button type="submit" form="new-output-form" class="btn">Generate</button>`;
             openModal('New Output', body, footer);
         }

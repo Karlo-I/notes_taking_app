@@ -43,7 +43,7 @@ def new():
             <form method="post">
                 <label>Topic or question:<br>
                     <textarea name="topic_query" rows="3" cols="60"
-                        placeholder="e.g. What have I learned about FATCA compliance?"></textarea>
+                        placeholder="e.g. Enter your output request here."></textarea>
                 </label><br><br>
                 <label>Output type:<br>
                     <select name="output_type">
