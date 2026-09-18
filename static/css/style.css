@@ -237,6 +237,38 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 .card-actions { margin-top: 16px; }
 .meta { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 
+/* Notes Grid Layout & Scoped Card Tightening */
+.notes-grid, .outputs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+.notes-grid .card, .outputs-grid .card {
+    margin-bottom: 0;
+    padding: 16px;
+    display: flex; /* This pushes the view button to the bottom of each card */
+    flex-direction: column;
+}
+.notes-grid .card:hover, .outputs-grid .card:hover {
+    border-color: var(--primary);
+}
+.notes-grid .card-header, .outputs-grid .card-header {
+    margin-bottom: 8px;
+    gap: 12px;
+}
+.notes-grid .card-excerpt, .outputs-grid .card-excerpt {
+    margin: 8px 0;
+    font-size: 14px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1; /* This tells the text area to grow and fill all empty spaces, effectively pushing the view button to the bottom of the card */
+}
+.notes-grid .card-actions, .outputs-grid .card-actions {
+    margin-top: 12px;
+}
+
 /* Badges */
 .badge {
     display: inline-block;
@@ -470,6 +502,15 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .review-actions { flex-wrap: wrap; }
     .card { padding: 16px !important; margin-bottom: 12px !important; }
     
+    /* Scoped mobile rules for the notes grid */
+    .notes-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    .notes-grid .card {
+        padding: 12px !important;
+    }
+
     /* 4. FOOTER FIX (Cleaned) */
     .app-footer {
         margin-top: auto !important; /* Pushes footer to the absolute bottom */

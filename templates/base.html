@@ -6,7 +6,7 @@
     <title>{% block title %}Notes App{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css?v=8"> <!-- Bumped version -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@latest" defer></script>
 </head>
 <body>
     
@@ -113,6 +113,8 @@
             document.getElementById('modal-body').innerHTML = bodyHtml;
             document.getElementById('modal-footer').innerHTML = footerHtml;
             document.getElementById('global-modal').classList.add('active');
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
         
         function closeModal() {
@@ -133,7 +135,7 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 const body = '<div class="modal-note-content">' + data.content + '</div>';
-                let footer = `<form method="post" action="/notes/${data.id}/delete" class="modal-footer-left"><button type="submit" class="btn btn-danger">Delete</button></form>`;
+                let footer = `<form method="post" action="/notes/${data.id}/delete" class="modal-footer-left" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;"><button type="submit" class="btn btn-danger">Delete</button></form>`;
                 if (data.status === 'under_review') {
                     footer += `<a href="/notes/${data.id}/review" class="btn">Continue Review</a>`;
                 }
@@ -149,7 +151,7 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 const body = '<div class="modal-output-content">' + data.content + '</div>';
-                let footer = `<form method="post" action="/outputs/${data.id}/delete" class="modal-footer-left"><button type="submit" class="btn btn-danger">Delete</button></form>`;
+                let footer = `<form method="post" action="/outputs/${data.id}/delete" class="modal-footer-left" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;"><button type="submit" class="btn btn-danger">Delete</button></form>`;
                 footer += `<a href="/outputs/${data.id}/pdf" class="btn btn-secondary">Download PDF</a>`;
                 footer += `<form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;"><button type="submit" class="btn">Regenerate</button></form>`;
                 openModal(`[${data.type.toUpperCase()}] ${data.topic || 'Untitled'}`, body, footer);

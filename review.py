@@ -92,6 +92,8 @@ def _merge_into(target_id, new_note_id, merged_content):
                 "UPDATE notes SET status = 'merged', merged_into = %s WHERE id = %s",
                 (target_id, str(new_note_id)),
             )
+        
+        conn.commit() # This ensures the merge transaction gets saved, otherwise the db will silently roll back any changes
 
     # Target's content just changed -- its embedding is now stale. Recompute
     # it, same as any other approved note.
