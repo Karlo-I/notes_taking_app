@@ -109,6 +109,7 @@ def _merge_into(target_id, new_note_id, merged_content):
 def run_integration(note_id, content, embedding):
     candidates = _find_candidates(note_id, embedding)
     result = integration_decide(content, candidates)
+    print("AI Decision:", result)
 
     # Extract and save integration token usage
     inp_tokens = result.get("input_tokens", 0)
@@ -132,6 +133,7 @@ def run_integration(note_id, content, embedding):
                     "INSERT INTO note_links (note_id, related_note_id, link_type) VALUES (%s, %s, %s)",
                     (str(note_id), result["target_note_id"], link_type),
                 )
+            conn.commit()
 
 def _open_session_id(cur, note_id):
     cur.execute(

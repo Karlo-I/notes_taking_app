@@ -43,7 +43,9 @@ Note content:
         topics_list = json.loads(raw_text)
         if not isinstance(topics_list, list):
             return
-    except Exception:
+    
+    except Exception as e:
+        print("TOPIC EXTRACTION ERROR:", e)
         # If the LLM fails or returns bad JSON, we just skip topic extraction.
         # We don't want to block the user from approving their note.
         return
