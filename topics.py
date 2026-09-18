@@ -76,3 +76,5 @@ Note content:
                     "INSERT INTO note_topics (note_id, topic_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                     (note_id, topic_id)
                 )
+
+            conn.commit()

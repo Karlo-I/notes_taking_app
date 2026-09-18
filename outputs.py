@@ -199,6 +199,8 @@ def regenerate(output_id):
 
             cur.execute("DELETE FROM output_sources WHERE output_id = %s", (str(result["id"]),))
             cur.execute("DELETE FROM outputs WHERE id = %s", (str(result["id"]),))
+        
+        conn.commit()
 
     return redirect(url_for("outputs.index"))
 
@@ -269,4 +271,5 @@ def delete(output_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM outputs WHERE id = %s", (str(output_id),))
+        conn.commit()
     return redirect(url_for("outputs.index"))

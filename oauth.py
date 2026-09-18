@@ -47,11 +47,6 @@ def init_oauth(app):
 
 
 def upsert_user(provider, subject_id, display_name):
-    """
-    Shared by app/auth/dev.py and this module. Same INSERT ... ON CONFLICT
-    shape either way, since both ultimately write to the same users table
-    keyed on (oauth_provider, oauth_subject_id).
-    """
     with get_unscoped_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -64,7 +59,10 @@ def upsert_user(provider, subject_id, display_name):
                 """,
                 (provider, subject_id, display_name),
             )
-            return cur.fetchone()[0]
+            user_id = cur.fetchone()[0]
+        conn.commit()
+        
+    return user_id
 
 
 @oauth_bp.route("/auth/<provider>/login")

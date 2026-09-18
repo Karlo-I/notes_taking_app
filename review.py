@@ -69,7 +69,7 @@ def _merge_into(target_id, new_note_id, merged_content):
             cur.execute("SELECT content FROM notes WHERE id = %s", (target_id,))
             row = cur.fetchone()
             if row is None:
-                return  # target vanished somehow -- bail safely, leave the new note as-is
+                return
             old_content = row[0]
 
             cur.execute(
@@ -92,8 +92,7 @@ def _merge_into(target_id, new_note_id, merged_content):
                 "UPDATE notes SET status = 'merged', merged_into = %s WHERE id = %s",
                 (target_id, str(new_note_id)),
             )
-        
-        conn.commit() # This ensures the merge transaction gets saved, otherwise the db will silently roll back any changes
+        conn.commit()
 
     # Target's content just changed -- its embedding is now stale. Recompute
     # it, same as any other approved note.
@@ -104,6 +103,7 @@ def _merge_into(target_id, new_note_id, merged_content):
                 "UPDATE notes SET embedding = %s::vector WHERE id = %s",
                 (vector_literal(new_embedding), target_id),
             )
+        conn.commit()
 
 
 def run_integration(note_id, content, embedding):
@@ -120,6 +120,7 @@ def run_integration(note_id, content, embedding):
                 "UPDATE notes SET integration_input_tokens = %s, integration_output_tokens = %s WHERE id = %s",
                 (inp_tokens, out_tokens, str(note_id)),
             )
+        conn.commit()
 
     if result["decision"] == "merge" and result.get("target_note_id"):
         _merge_into(result["target_note_id"], note_id, result["merged_content"])

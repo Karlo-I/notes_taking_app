@@ -75,7 +75,6 @@ def new():
                     (session["user_id"], note_type, content, classify_result["input_tokens"], classify_result["output_tokens"]),
                 )
                 note_id, saved_content = cur.fetchone()
-
             conn.commit()
 
         embedding = embed_and_store(note_id, saved_content)
@@ -94,7 +93,6 @@ def new():
                 (session["user_id"], note_type, content, classify_result["input_tokens"], classify_result["output_tokens"]),
             )
             note_id = cur.fetchone()[0]
-
         conn.commit()
 
     begin_critique_session(note_id, note_type, content)
