@@ -49,6 +49,15 @@ Three-way decision, not binary: **merge** into an existing note, **link** as rel
 
 Merges are append-only — a new `note_versions` row is written, nothing is overwritten in place. This preserves an audit trail and avoids silent loss of the user's original thought.
 
+When two notes are too similar, the AI merges them into one:
+- **Survivor note**: Gets status `approved_merged` and contains the combined text
+- **Ghost note**: Gets status `merged` with `merged_into` pointing to the survivor
+
+**Deleting merged notes:**
+- Deleting a ghost note reactivates it to `approved` status
+- The survivor keeps `approved_merged` status (it still has the merged content)
+- Deleting a survivor note orphans any ghost notes, reverting them to `approved`
+
 ## 5. Data model
 
 | Table | Key fields | Purpose |

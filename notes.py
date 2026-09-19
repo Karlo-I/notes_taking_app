@@ -129,8 +129,17 @@ def view(note_id):
 def delete(note_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
+            # Orphan and reactivate any notes that were merged INTO this note
+            # Note: We keep the survivor's status as 'approved_merged' because
+            # it still contains the merged content. Only the ghost note (status='merged')
+            # gets reactivated to 'approved'.
+            cur.execute(
+                "UPDATE notes SET merged_into = NULL, status = 'approved' WHERE merged_into = %s",
+                (str(note_id),)
+            )
             cur.execute("DELETE FROM notes WHERE id = %s", (str(note_id),))
         conn.commit()
+        
     return redirect(url_for("notes.index"))
 
 
