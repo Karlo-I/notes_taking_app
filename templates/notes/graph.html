@@ -183,11 +183,15 @@
     const container = document.getElementById('graph-container');
     const data = { nodes: nodes, edges: edges };
 
-    // FIXED: Tooltip moved to root level to prevent initialization errors
+    // Tooltip moved to root level to prevent initialization errors
     const options = {
         physics: {
             stabilization: false,
-            barnesHut: { gravitationalConstant: -3000, springLength: 200 }
+            barnesHut: { 
+                gravitationalConstant: -8000, // repulsion push nodes apart
+                springLength: 200, // length give edges more room
+                centralGravity: 0.3 // keeps the graph from flying off screen
+            }
         },
         interaction: { 
             hover: true, 
