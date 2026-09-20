@@ -50,7 +50,18 @@
   transition: all 0.2s;
 }
 
-/* Mobile Optimizations (Tuned for 375px width) */
+/* TABLET BREAKPOINT (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .stats-grid-mobile {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .charts-grid-mobile {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* MOBILE BREAKPOINT (max-width: 768px) */
 @media (max-width: 768px) {
   .stats-grid-mobile {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -70,7 +81,7 @@
   
   /* Heatmap fits the 375px screen better now */
   .react-calendar-heatmap {
-    min-width: 320px !important; 
+    min-width: 280px !important; 
   }
 
   /* Button container alignment */
@@ -81,14 +92,14 @@
 
   /* Aggressive button shrinking */
   .year-btn {
-    box-sizing: border-box !important; /* Ensures border doesn't add to height */
+    box-sizing: border-box !important;
     width: 20px !important;
-    height: 8px !important; /* Very short to match small heatmap */
+    height: 8px !important;
     font-size: 4px !important;
-    line-height: 1 !important; /* Removes default text spacing */
+    line-height: 1 !important;
     border-radius: 3px !important;
-    padding: 0 !important; /* Removes default button padding */
-    margin: 0 !important; /* Removes default button margin */
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   /* Shrink the legend text and spacing */
@@ -102,5 +113,19 @@
     width: 6px !important;
     height: 6px !important;
   }
+}
 
+/* SMALL MOBILE (iPhone 6 and smaller - max-width: 375px) */
+@media (max-width: 375px) {
+  .stats-grid-mobile {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .stat-box-mobile {
+    min-height: 60px !important;
+    padding: 6px !important;
+  }
+  .react-calendar-heatmap {
+    min-width: 240px !important;
+  }
 }
