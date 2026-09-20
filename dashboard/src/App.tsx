@@ -17,6 +17,10 @@ function App() {
   const [selectedYear, setSelectedYear] = useState(2026)
   const [loading, setLoading] = useState(true)
 
+  // NEW: State to track screen width for responsive inline styles
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isSmallMobile, setIsSmallMobile] = useState(window.innerWidth <= 375);
+
   useEffect(() => {
     const userId = (window as any).CURRENT_USER_ID;
     
@@ -34,6 +38,15 @@ function App() {
         console.error('Error fetching data:', error)
         setLoading(false)
       })
+
+    // NEW: Resize listener to update screen width state
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsSmallMobile(window.innerWidth <= 375);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [])
 
   if (loading) return <div style={{ padding: '40px', color: '#c9d1d9', textAlign: 'center' }}>Loading...</div>
@@ -42,25 +55,31 @@ function App() {
   const yearNotes = heatmapData.filter(item => item.date.startsWith(selectedYear.toString())).reduce((sum, item) => sum + item.notes, 0)
   const yearOutputs = heatmapData.filter(item => item.date.startsWith(selectedYear.toString())).reduce((sum, item) => sum + item.outputs, 0)
 
+  // UPDATED: Dynamic styles based on screen width
   const statBoxStyle = {
     backgroundColor: '#161b22',
     border: '1px solid #30363d',
     borderRadius: '6px',
-    padding: '10px',
+    padding: isSmallMobile ? '6px' : '10px',
     display: 'flex',
     flexDirection: 'column' as const,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '80px'
+    minHeight: isSmallMobile ? '60px' : '80px'
   };
 
   return (
     <div className="dashboard-container-mobile" style={{ width: '100%', maxWidth: '1400px', margin: '-30px auto 0 auto', padding: '20px 16px', boxSizing: 'border-box', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif' }}>
       
-      <h1 style={{ marginBottom: '14px', color: '#f0f6fc', fontSize: '20px', fontWeight: 600 }}>Dashboard Analytics</h1>
+      <h1 style={{ marginBottom: '14px', color: '#f0f6fc', fontSize: '20px', fontWeight: 600 }}>Knowledge Base Analytics</h1>
       
-      {/* ROW 1: Stats (Uniform Height) */}
-      <div className="stats-grid-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+      {/* ROW 1: Stats (Dynamic Columns) */}
+      <div className="stats-grid-mobile" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: isSmallMobile ? '1fr' : (isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)'), 
+        gap: isSmallMobile ? '8px' : '16px', 
+        marginBottom: '16px' 
+      }}>
         
         {/* Box 1: Productivity */}
         <div className="stat-box-mobile" style={statBoxStyle}>
@@ -164,8 +183,12 @@ function App() {
         </div>
       </div>
 
-      {/* ROW 3: Composition Charts (Side-by-Side) */}
-      <div className="charts-grid-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+      {/* ROW 3: Composition Charts (Dynamic Columns) */}
+      <div className="charts-grid-mobile" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
+        gap: '16px' 
+      }}>
         
         {/* Notes Composition */}
         <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', padding: '14px', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>

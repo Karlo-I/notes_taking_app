@@ -118,7 +118,7 @@ def create_app():
             <div class="login-page">
                 <div class="login-card">
                     <div class="login-icon">🧠</div>
-                    <h1 class="login-title">Welcome to Your Memory Bank</h1>
+                    <h1 class="login-title">Welcome to Memory Bank</h1>
                     <p class="login-subtitle">Sharpen your thinking before it's recorded. Sign in to continue.</p>
                     <div class="login-links">
                         {''.join(links)}
