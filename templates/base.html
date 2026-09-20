@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d1117">
     <title>{% block title %}Notes App{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css?v=8"> <!-- Bumped version -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <script src="https://unpkg.com/lucide@latest" defer></script>
+    <link rel="manifest" href="/static/site.webmanifest"> <!-- PWA Manifest & Icons -->
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 </head>
 <body>
     
@@ -299,5 +302,21 @@
             });
         });
     </script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+
 </body>
 </html>
