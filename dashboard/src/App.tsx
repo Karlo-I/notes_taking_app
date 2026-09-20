@@ -57,7 +57,7 @@ function App() {
   return (
     <div className="dashboard-container-mobile" style={{ width: '100%', maxWidth: '1400px', margin: '-30px auto 0 auto', padding: '20px 16px', boxSizing: 'border-box', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif' }}>
       
-      <h1 style={{ marginBottom: '14px', color: '#f0f6fc', fontSize: '20px', fontWeight: 600 }}>Knowledge Base Analytics</h1>
+      <h1 style={{ marginBottom: '14px', color: '#f0f6fc', fontSize: '20px', fontWeight: 600 }}>Dashboard Analytics</h1>
       
       {/* ROW 1: Stats (Uniform Height) */}
       <div className="stats-grid-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>

@@ -1,4 +1,4 @@
--- Schema for notes -> critic -> knowledge base -> output pipeline.
+-- Schema for notes -> critic -> memory bank -> output pipeline.
 -- Matches DESIGN.md section 5. Run automatically by docker-compose on first init.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
@@ -79,7 +79,7 @@ CREATE TABLE critique_turns (
 );
 
 -- Related-but-distinct notes -- the third option beyond merge-or-new,
--- and the actual graph structure of the knowledge base.
+-- and the actual graph structure of the memory bank.
 CREATE TABLE note_links (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     note_id         UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,

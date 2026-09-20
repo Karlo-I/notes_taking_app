@@ -92,7 +92,7 @@ def generate_output(user_id: str, topic_query: str, output_type: str, is_regener
     system_prompt = SYSTEM_PROMPTS[output_type]
     user_message = (
         f"Topic / question: {topic_query}\n\n"
-        f"Relevant notes from the knowledge base:\n{context_block}\n\n"
+        f"Relevant notes from the memory bank:\n{context_block}\n\n"
         f"Write the {output_type} output now."
     )
 

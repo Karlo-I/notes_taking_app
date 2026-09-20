@@ -1,4 +1,4 @@
-const CACHE_NAME = 'knowledge-base-v1';
+const CACHE_NAME = 'memory-bank-v1';
 
 // 1. Install event: cache the core app shell
 self.addEventListener('install', event => {

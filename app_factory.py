@@ -111,14 +111,14 @@ def create_app():
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Knowledge Base — Login</title>
+            <title>Memory Bank — Login</title>
             <link rel="stylesheet" href="/static/css/style.css">
         </head>
         <body class="login-body">
             <div class="login-page">
                 <div class="login-card">
                     <div class="login-icon">🧠</div>
-                    <h1 class="login-title">Welcome to Your Knowledge Base</h1>
+                    <h1 class="login-title">Welcome to Your Memory Bank</h1>
                     <p class="login-subtitle">Sharpen your thinking before it's recorded. Sign in to continue.</p>
                     <div class="login-links">
                         {''.join(links)}

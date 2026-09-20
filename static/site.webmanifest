@@ -1,6 +1,6 @@
 {
-  "name": "My Knowledge Base",
-  "short_name": "Knowledge Base",
+  "name": "My Memory Bank",
+  "short_name": "Memory Bank",
   "icons": [
     {
       "src": "/static/web-app-manifest-192x192.png",

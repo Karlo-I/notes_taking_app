@@ -1,4 +1,4 @@
-# Design Reference — Notes → Critic → Knowledge Base → Output
+# Design Reference — Notes → Critic → Memory Bank → Output
 
 **Purpose of this document:** single source of truth for architecture decisions made during planning. Paste this into any AI session (Claude Code, another tool, a fresh chat) before asking for implementation help — it carries context that a fresh chat won't have.
 
@@ -10,12 +10,12 @@
 
 ## 1. Thesis
 
-A personal note-taking and reflection tool with one core mechanic: an AI critic sits between a raw note and the permanent knowledge base, and nothing enters storage until the user has satisfied the critique. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, summary) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture.
+A personal note-taking and reflection tool with one core mechanic: an AI critic sits between a raw note and the permanent knowledge base (the term 'memory bank' is used interchangeably here), and nothing enters storage until the user has satisfied the critique. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, summary) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture.
 
 ## 2. System architecture — two pipelines
 
 **Note ingestion:**
-Raw note → critic dialogue (bounces with user until approved or overridden) → integration agent (merge / link / new) → knowledge database
+Raw note → critic dialogue (bounces with user until approved or overridden) → integration agent (merge / link / new) → memory bank
 
 **Output generation:**
 Topic or question → topic identification (LLM maps query to existing KB topics) → filtered vector search (strictly within matched topics) → LLM re-ranking (filters noise, ranks top 8 snippets) → draft generation → final output (screen or PDF)
