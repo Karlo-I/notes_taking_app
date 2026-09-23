@@ -93,7 +93,7 @@ Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critiqu
 
 ## 7. Cost model
 
-Per note: 1 classification call (Haiku) + 1 embedding call (near-free) + [Optional: N critic turns] + 1 integration-agent call + 1 topic extraction call (Haiku).
+Per note: 1 classification call (Haiku) + 1 embedding call (JINA - free) + [Optional: N critic turns] + 1 integration-agent call + 1 topic extraction call (Haiku).
 Per output: 1 embedding (query) + 1 topic-identification call (Haiku) + 1 re-ranking call (Haiku) + 1 draft-generation call. No critique call on this side.
 Model choice: Haiku-class model for critic, classification, integration, and topic extraction (structured, bounded tasks); a stronger model only where prose quality in the final draft output matters more.
 
@@ -119,17 +119,21 @@ Model choice: Haiku-class model for critic, classification, integration, and top
 - **Backend:** Python, Flask (Blueprints & App Factory pattern)
 - **Database:** PostgreSQL (with pgvector). Run locally via Docker Compose for development, and hosted on Neon for production — same engine in both environments, no dual-schema translation layer needed.
 - **Auth:** OAuth 2.0 (Google/GitHub) via Authlib, Email/Password via `bcrypt` and `Flask-Limiter`
-- **AI:** Claude Haiku-class model for classification, critic, integration, and topic extraction; stronger model optional for draft prose
+- **AI:** Claude Haiku-class model for classification, critic, integration, and topic extraction; stronger model optional for draft prose, JINA for 1,024 embeddings, Neon calculates and saves pgvector of the embeddings
 - **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL, Render for production deployment
 
 ## 10. What this deliberately is not
 
 Not built for scale or multi-tenant SaaS — built for one user's personal reflection practice, prioritizing coherence and cost-efficiency over throughput. Not a general PKM tool — the critic-on-ingestion gate (with the optional skip toggle) is the entire point, not a bolt-on feature.
 
-## 11. Implementation Notes & Recent Additions
+## 11. Implementation Notes
 
 - **Modals & JSON:** The `notes.py` and `outputs.py` detail routes return raw JSON when queried with `?format=json`. This powers the frontend modal system without requiring a separate API blueprint.
-- **Embeddings:** Notes are only embedded into the vector database *after* they are approved. Drafts and notes under review are never searchable.
+- **Semantic Search & Vector Architecture:** This application leverages a robust vector search pipeline to enable semantic note retrieval and automated knowledge graph linking, moving beyond simple keyword matching.
+  - **Embeddings:** Text is processed via Jina AI (`jina-embeddings-v3`), transforming natural language into 1,024-dimensional vector embeddings. These vectors map the semantic "meaning" of a note into a high-dimensional geometric space. Notes are only embedded into the vector database *after* they are approved. Drafts and notes under review are never searchable.
+  - **Storage & Indexing:** Embeddings are stored in Neon (PostgreSQL) using the `pgvector` extension. The database utilizes `IVFFlat` (Inverted File with Flat Compression) indexing to enable lightning-fast Approximate Nearest Neighbor (ANN) searches, ensuring high performance and low latency even as the knowledge base scales.
+  - **Similarity Calculation:** Semantic proximity is calculated using `Cosine Similarity`. By measuring the angle between the 1,024-dimensional vectors of a query and stored notes, the system identifies conceptually related content regardless of exact vocabulary overlap.
+  - **Orchestration:** The Python backend acts as the traffic controller, seamlessly bridging Jina's translation layer and Neon's geometric computation engine to deliver real-time, context-aware insights.
 - **Versioning:** When a note is merged or its wording is changed during the review process, the original content is preserved in the `note_versions` table. Nothing is ever permanently lost.
 - **Docker & Background Processes:** The app and database are decoupled. `start.sh` handles spinning up Docker and the Flask app in the background. Docker Desktop is configured to auto-start on Mac login.
 - **Advanced Retrieval Pipeline:** Output generation uses a 3-stage retrieval process: 1. LLM identifies relevant `topics` from the query, 2. Vector search is strictly filtered to those topics (ensuring umbrella concepts like "Chapter 3" are found even if the query only says "871m"), 3. LLM re-ranking filters out noisy snippets before the final generation.

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}To-Dos{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<style>
+    .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; align-items: start; }
+    .kanban-column { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; min-height: 400px; }
+    .kanban-column h2 { font-size: 16px; color: var(--text-bright); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .kanban-list { list-style: none; padding: 0; margin: 0; min-height: 50px; }
+    .kanban-item { margin-bottom: 12px; cursor: grab; transition: transform 0.2s; }
+    .kanban-item:active { cursor: grabbing; }
+    .kanban-item .card { margin-bottom: 0; }
+    .kanban-item.is-complete .card { opacity: 0.6; }
+    .kanban-item.is-complete .card .task-text { text-decoration: line-through; color: var(--text-secondary); }
+    .sortable-ghost { opacity: 0.4; background: transparent !important; border: 2px dashed var(--primary) !important; box-shadow: none !important; }
+</style>
+
+<div class="page-header">
+    <h1>To-Dos</h1>
+</div>
+
+<div class="kanban-board">
+    <!-- DRAFT COLUMN -->
+    <div class="kanban-column">
+        <h2>Draft <span class="badge">{{ todos['draft']|length }}</span></h2>
+        <ul class="kanban-list" id="list-draft" data-status="draft">
+            {% for item in todos['draft'] %}
+            <li class="kanban-item" data-id="{{ item['id'] }}">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="task-text">{{ item['content'] }}</span>
+                    </div>
+                    <div class="card-actions" style="text-align: right;">
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        <!-- THIS IS THE CORRECT FORM WITH THE ID -->
+        <form id="add-task-form" action="/todos/new" method="POST" style="margin-top: 16px; display: flex; gap: 8px;">
+            <input type="text" name="content" class="form-control" placeholder="Add a task..." required>
+            <button type="submit" class="btn btn-sm">Add</button>
+        </form>
+    </div>
+
+    <!-- ON-GOING COLUMN -->
+    <div class="kanban-column">
+        <h2>On-going <span class="badge">{{ todos['ongoing']|length }}</span></h2>
+        <ul class="kanban-list" id="list-ongoing" data-status="ongoing">
+            {% for item in todos['ongoing'] %}
+            <li class="kanban-item" data-id="{{ item['id'] }}">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="task-text">{{ item['content'] }}</span>
+                    </div>
+                    <div class="card-actions" style="text-align: right;">
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- COMPLETE COLUMN -->
+    <div class="kanban-column">
+        <h2>Complete <span class="badge">{{ todos['complete']|length }}</span></h2>
+        <ul class="kanban-list" id="list-complete" data-status="complete">
+            {% for item in todos['complete'] %}
+            <li class="kanban-item is-complete" data-id="{{ item['id'] }}">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="task-text">{{ item['content'] }}</span>
+                    </div>
+                    <div class="card-actions" style="text-align: right;">
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<script>
+    // 1. INITIALIZE SORTABLEJS (DRAG & DROP)
+    const lists = ['draft', 'ongoing', 'complete'];
+    lists.forEach(status => {
+        const el = document.getElementById(`list-${status}`);
+        if (el) {
+            new Sortable(el, {
+                group: 'todos', 
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const newStatus = evt.to.dataset.status;
+                    const item = evt.item;
+
+                    // --- UI FIX: Update strikethrough class based on destination ---
+                    if (newStatus === 'complete') {
+                        item.classList.add('is-complete');
+                    } else {
+                        item.classList.remove('is-complete');
+                    }
+
+                    // --- FRACTIONAL INDEXING PAYLOAD ---
+                    const children = Array.from(evt.to.children);
+                    const newIndex = evt.newIndex;
+                    
+                    const prev_id = newIndex > 0 ? children[newIndex - 1].dataset.id : null;
+                    const next_id = newIndex < children.length - 1 ? children[newIndex + 1].dataset.id : null;
+
+                    const payload = {
+                        new_status: newStatus,
+                        item_id: item.dataset.id,
+                        prev_id: prev_id,
+                        next_id: next_id
+                    };
+
+                    fetch('/todos/reorder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }).then(response => {
+                        if (response.ok) {
+                            // Update badge counts seamlessly
+                            ['draft', 'ongoing', 'complete'].forEach(s => {
+                                const list = document.getElementById(`list-${s}`);
+                                const badge = list.closest('.kanban-column').querySelector('.badge');
+                                if (badge) badge.textContent = list.children.length;
+                            });
+                        } else {
+                            console.error('Failed to reorder');
+                            window.location.reload(); 
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    // 2. SEAMLESS TASK CREATION
+    const addForm = document.getElementById('add-task-form');
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = this.querySelector('input[name="content"]');
+            const content = input.value.trim();
+            if (!content) return;
+
+            fetch('/todos/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ content: content })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const li = document.createElement('li');
+                li.className = 'kanban-item';
+                li.dataset.id = data.id;
+                li.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="task-text">${data.content}</span>
+                        </div>
+                        <div class="card-actions" style="text-align: right;">
+                            <form action="/todos/${data.id}/delete" method="POST" style="display:inline;">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                
+                const draftList = document.getElementById('list-draft');
+                draftList.appendChild(li);
+                
+                const badge = draftList.closest('.kanban-column').querySelector('.badge');
+                if (badge) badge.textContent = draftList.children.length;
+                
+                input.value = '';
+            })
+            .catch(err => console.error('Error creating task:', err));
+        });
+    }
+</script>
+
+{% endblock %}
