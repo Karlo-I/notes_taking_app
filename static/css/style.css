@@ -241,10 +241,10 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 .notes-grid, .outputs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    gap: 8px 16px;
 }
 .notes-grid .card, .outputs-grid .card {
-    margin-bottom: 0;
+    margin-bottom: 8px;
     padding: 16px;
     display: flex; /* This pushes the view button to the bottom of each card */
     flex-direction: column;
@@ -388,7 +388,7 @@ body.login-body { display: flex !important; justify-content: center; align-items
 .link-danger { color: var(--danger); }
 .link-danger:hover { color: var(--danger-hover); text-decoration: none; }
 
-.app-footer { margin-top: auto; padding: 20px 0; border-top: 1px solid var(--border-color); text-align: center; }
+.app-footer { margin-top: 12px; padding: 20px 0; border-top: 1px solid var(--border-color); text-align: center; }
 .footer-content { max-width: 800px; margin: 0 auto; }
 .footer-statement, .footer-social, .footer-copyright { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; }
 .footer-social a { color: var(--primary); text-decoration: none; }
@@ -503,11 +503,11 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .card { padding: 16px !important; margin-bottom: 12px !important; }
     
     /* Scoped mobile rules for the notes grid */
-    .notes-grid {
+    .notes-grid, .outputs-grid {
         grid-template-columns: 1fr !important;
-        gap: 12px !important;
+        gap: 2px !important;
     }
-    .notes-grid .card {
+    .notes-grid .card, .outputs-grid {
         padding: 12px !important;
     }
 

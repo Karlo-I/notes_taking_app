@@ -129,17 +129,37 @@ def view(note_id):
 def delete(note_id):
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
-            # Orphan and reactivate any notes that were merged INTO this note
-            # Note: We keep the survivor's status as 'approved_merged' because
-            # it still contains the merged content. Only the ghost note (status='merged')
-            # gets reactivated to 'approved'.
+            # 1. Find all topics linked to this note BEFORE we delete anything
+            cur.execute("SELECT topic_id FROM note_topics WHERE note_id = %s", (str(note_id),))
+            affected_topic_ids = [row[0] for row in cur.fetchall()]
+
+            # 2. Delete the links between the note and the topics
+            cur.execute("DELETE FROM note_topics WHERE note_id = %s", (str(note_id),))
+            
+            # 3. Delete note-to-note links (This is a bonus fix to prevent broken lines on your graph!)
+            cur.execute("DELETE FROM note_links WHERE note_id = %s OR related_note_id = %s", (str(note_id), str(note_id)))
+
+            # 4. Orphan and reactivate any notes that were merged INTO this note
             cur.execute(
                 "UPDATE notes SET merged_into = NULL, status = 'approved' WHERE merged_into = %s",
                 (str(note_id),)
             )
+            
+            # 5. Delete the actual note
             cur.execute("DELETE FROM notes WHERE id = %s", (str(note_id),))
-        conn.commit()
-        
+
+            # 6. Check each affected topic to see if it's now an "orphan"
+            for topic_id in affected_topic_ids:
+                # Count how many OTHER notes are still linked to this topic
+                cur.execute("SELECT COUNT(*) FROM note_topics WHERE topic_id = %s", (topic_id,))
+                remaining_links = cur.fetchone()[0]
+
+                # If no other notes use it, delete the topic from the database
+                if remaining_links == 0:
+                    cur.execute("DELETE FROM topics WHERE id = %s", (topic_id,))
+
+            conn.commit()
+            
     return redirect(url_for("notes.index"))
 
 
