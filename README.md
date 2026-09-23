@@ -4,21 +4,21 @@
 
 **AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic) and Qwen. All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
 
-**Last updated:** September 11, 2026
+**Last updated:** September 23, 2026
 
 ---
 
 ## 1. Thesis
 
-A personal note-taking and reflection tool with one core mechanic: an AI critic sits between a raw note and the permanent knowledge base (the term 'memory bank' is used interchangeably here), and nothing enters storage until the user has satisfied the critique. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, summary) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture.
+A personal note-taking and reflection tool with one core mechanic: an AI critic sits between a raw note and the permanent knowledge base (the term 'memory bank' is used interchangeably here), and nothing enters storage until the user has satisfied the critique. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, summary) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture. Users retain ultimate sovereignty via a "Skip Critic" toggle for instant auto-approval when desired.
 
 ## 2. System architecture — two pipelines
 
 **Note ingestion:**
-Raw note → critic dialogue (bounces with user until approved or overridden) → integration agent (merge / link / new) → memory bank
+Raw note → AI classification (Claim / Reflection / Question) → [Optional: Critic dialogue loop] → Integration agent (merge / link / new) + Topic Extraction → Memory bank
 
 **Output generation:**
-Topic or question → topic identification (LLM maps query to existing KB topics) → filtered vector search (strictly within matched topics) → LLM re-ranking (filters noise, ranks top 8 snippets) → draft generation → final output (screen or PDF)
+Topic or question → Topic identification (LLM maps query to existing KB topics) → Filtered vector search (strictly within matched topics) → LLM re-ranking (filters noise, ranks top 8 snippets) → Draft generation → Final output (screen or PDF)
 
 No critique cycle on the output side — deliberately dropped to cut cost and complexity in half; the note-ingestion critic is where the real value is.
 
@@ -39,11 +39,13 @@ No critique cycle on the output side — deliberately dropped to cut cost and co
 4. Anti-capitulation clause — do not soften a critique unless the user's reply addresses the specific named gap
 5. Turn-aware behavior — below cap, argue normally; at cap, state the strongest remaining objection and explicitly hand control back to the user
 
-**Escape hatch:** user can override at any point with a required one-line reason. Resolution stored as `approved_clean` / `approved_overridden` / `abandoned`. This preserves user sovereignty — the critic informs, the user decides.
+**Escape hatches:** 
+- User can override at any point during review with a required one-line reason. Resolution stored as `approved_clean` / `approved_overridden` / `abandoned`. 
+- **Skip Critic Toggle:** Users can bypass the critique loop entirely at the point of creation for *any* note type, routing it directly to the "Fast Track" (auto-approve, embed, integrate, extract topics).
 
 **Critic reply format:** free text, not structured JSON. Scaffolding (mode, context, turn count) is structured; the critique's voice stays natural.
 
-## 4. Integration agent
+## 4. Integration agent & Graph Maintenance
 
 Three-way decision, not binary: **merge** into an existing note, **link** as related-but-distinct, or **new**. Runs once per approved note: embed → vector search existing notes → LLM decides among the three given candidates.
 
@@ -53,10 +55,11 @@ When two notes are too similar, the AI merges them into one:
 - **Survivor note**: Gets status `approved_merged` and contains the combined text
 - **Ghost note**: Gets status `merged` with `merged_into` pointing to the survivor
 
-**Deleting merged notes:**
-- Deleting a ghost note reactivates it to `approved` status
-- The survivor keeps `approved_merged` status (it still has the merged content)
-- Deleting a survivor note orphans any ghost notes, reverting them to `approved`
+**Deleting notes & Orphan Cleanup:**
+- Deleting a ghost note reactivates it to `approved` status.
+- The survivor keeps `approved_merged` status (it still has the merged content).
+- Deleting a survivor note orphans any ghost notes, reverting them to `approved`.
+- **Graph Cleanup:** When any note is deleted, the system automatically cleans up associated `note_links` and deletes any `topics` that are left with zero remaining note connections, preventing floating/orphaned nodes in the knowledge graph.
 
 ## 5. Data model
 
@@ -90,9 +93,9 @@ Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critiqu
 
 ## 7. Cost model
 
-Per note: 1 embedding call (near-free) + N critic turns (bounded by user, not by the system) + 1 integration-agent call.
+Per note: 1 classification call (Haiku) + 1 embedding call (near-free) + [Optional: N critic turns] + 1 integration-agent call + 1 topic extraction call (Haiku).
 Per output: 1 embedding (query) + 1 topic-identification call (Haiku) + 1 re-ranking call (Haiku) + 1 draft-generation call. No critique call on this side.
-Model choice: Haiku-class model for critic and integration agent (structured, bounded tasks); a stronger model only where prose quality in the final draft output matters more.
+Model choice: Haiku-class model for critic, classification, integration, and topic extraction (structured, bounded tasks); a stronger model only where prose quality in the final draft output matters more.
 
 ## 8. Build order
 
@@ -108,7 +111,7 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 10. Glassmorphism Modal system (replacing separate detail pages)
 11. Global Live Search (autocomplete across Notes & Outputs)
 12. Holistic Analytics Dashboard overhaul (user-scoped metrics, combined heatmap, dual composition charts)
-13. Mobile-responsive CSS tweaks & Sticky Sidebar fix
+13. Mobile-responsive CSS tweaks, PWA manifest fixes, and Sticky Sidebar fix
 
 ## 9. Tech stack
 
@@ -116,12 +119,12 @@ Model choice: Haiku-class model for critic and integration agent (structured, bo
 - **Backend:** Python, Flask (Blueprints & App Factory pattern)
 - **Database:** PostgreSQL (with pgvector). Run locally via Docker Compose for development, and hosted on Neon for production — same engine in both environments, no dual-schema translation layer needed.
 - **Auth:** OAuth 2.0 (Google/GitHub) via Authlib, Email/Password via `bcrypt` and `Flask-Limiter`
-- **AI:** Claude Haiku-class model for critic + integration; stronger model optional for draft prose
+- **AI:** Claude Haiku-class model for classification, critic, integration, and topic extraction; stronger model optional for draft prose
 - **DevOps:** Custom `start.sh` background script, Docker Compose for local PostgreSQL, Render for production deployment
 
 ## 10. What this deliberately is not
 
-Not built for scale or multi-tenant SaaS — built for one user's personal reflection practice, prioritizing coherence and cost-efficiency over throughput. Not a general PKM tool — the critic-on-ingestion gate is the entire point, not a bolt-on feature.
+Not built for scale or multi-tenant SaaS — built for one user's personal reflection practice, prioritizing coherence and cost-efficiency over throughput. Not a general PKM tool — the critic-on-ingestion gate (with the optional skip toggle) is the entire point, not a bolt-on feature.
 
 ## 11. Implementation Notes & Recent Additions
 
@@ -130,26 +133,29 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
 - **Versioning:** When a note is merged or its wording is changed during the review process, the original content is preserved in the `note_versions` table. Nothing is ever permanently lost.
 - **Docker & Background Processes:** The app and database are decoupled. `start.sh` handles spinning up Docker and the Flask app in the background. Docker Desktop is configured to auto-start on Mac login.
 - **Advanced Retrieval Pipeline:** Output generation uses a 3-stage retrieval process: 1. LLM identifies relevant `topics` from the query, 2. Vector search is strictly filtered to those topics (ensuring umbrella concepts like "Chapter 3" are found even if the query only says "871m"), 3. LLM re-ranking filters out noisy snippets before the final generation.
-- **Topic Extraction:** Runs automatically in `review.py` after a note is approved. Uses a cheap Haiku call to extract 1-3 broad topics and links them in the `note_topics` table.
+- **Topic Extraction & Reuse:** Runs automatically for *all* approved notes (including Questions and auto-approved Claims/Reflections). Uses a Haiku call to extract 1-3 broad topics. The prompt is fed a "menu" of existing user topics to intelligently reuse them and prevent duplicate topic creation.
+- **Refined AI Classification:** Updated the classification prompt with few-shot examples to prevent the AI from over-classifying ambiguous or placeholder inputs (e.g., "Test 123") as "questions".
+- **Skip Critic Toggle:** Added a "Skip AI Critic" toggle to the New Note modal (default: OFF). When enabled, Claims and Reflections bypass the critique loop and enter the "Fast Track" (auto-approve, embed, integrate, and extract topics), unifying the pipeline with the existing Question behavior.
+- **Orphaned Graph Cleanup:** When a note is deleted, the system now safely cleans up associated `note_links` and removes any `topics` that are no longer linked to any remaining notes, keeping the knowledge graph clean and preventing floating nodes.
 - **Re-ranking:** Uses a cheap Haiku call to read the first 250 characters of up to 12 retrieved notes, returning only the top 8 most relevant indices to save context window space and prevent hallucination.
 - **Global Live Search:** A dedicated `/search` route with a debounced, live-autocomplete dropdown that queries both Notes and Outputs instantly as you type, complete with Enter-key support and precise cursor positioning.
 - **Holistic Analytics Dashboard:** Completely overhauled to provide a unified, user-scoped view of the knowledge base. Migrated from an async FastAPI/a2wsgi setup to a native Flask Blueprint (`analytics_bp.py`) to eliminate Gunicorn worker deadlocks. Features a single, optimized endpoint (`/api/analytics/dashboard-data`) for instant loading, enforcing strict data isolation. Includes:
   - **Productivity:** Separate, clearly delineated counts for Total Notes and Total Outputs.
   - **Quality & Cost:** Notes Approval Rate, Total Tokens Used, and Average Tokens per item (Notes vs. Outputs).
-  - **Activity Heatmap:** A combined GitHub-style graph that distinctly tracks and tooltips both notes and outputs per day (e.g., "4 notes & 2 outputs on Sep 2").
+  - **Activity Heatmap:** A combined GitHub-style graph that distinctly tracks and tooltips both notes and outputs per day.
   - **Composition Charts:** Side-by-side donut charts breaking down Notes (Claims, Reflections, Questions) and Outputs (Q&A, Narration, Summary).
-  - **Layout:** Optimized vertical spacing and a sticky sidebar to ensure the dashboard and navigation remain fully visible without excessive scrolling.
+  - **Mobile/PWA Layout Fixes:** Implemented dynamic responsive CSS grids (via React state and media queries) to prevent uneven squishing on narrow mobile screens (e.g., iPhone 6) and ensured the PWA manifest `scope` covers the entire app to prevent URL bar reappearance.
 - **Database Indexing:** Added composite indexes to `notes`, `outputs`, `critique_sessions`, and `topics` to drastically accelerate user-scoped dashboard queries and vector retrieval without altering the core schema.
-- **Email/Password Authentication:** Added alongside OAuth. Uses `bcrypt` for hashing, enforces modern password rules (length > complexity), and prevents User Enumeration via generic error messages. 
+- **Email/Password Authentication:** Added alongside OAuth. Uses `bcrypt` for hashing, enforces modern password rules, and prevents User Enumeration via generic error messages. 
 - **Global Footer:** Added a clean, centered footer across all pages featuring a core philosophy statement, social links, and copyright, with optimized bottom-edge spacing.
 - **Interactive Knowledge Graph:** Added a dynamic, multi-dimensional graph visualization using Vis.js. Features include:
-  - **Automated Link Typing:** The integration agent now infers the relationship between notes (`supports`, `contradicts`, `elaborates`, `related`) using chain-of-thought reasoning, keeping the AI error rate below 5%.
-  - **Algorithmic Hub Detection:** Notes with 3+ incoming links are automatically rendered as larger "hub" nodes, requiring zero manual intervention.
+  - **Automated Link Typing:** The integration agent infers the relationship between notes (`supports`, `contradicts`, `elaborates`, `related`) using chain-of-thought reasoning.
+  - **Algorithmic Hub Detection:** Notes with 3+ incoming links are automatically rendered as larger "hub" nodes.
   - **Client-Side Filtering:** Sleek, multi-select toggle pills allow users to instantly filter nodes by type and links by relationship.
-  - **Tactical Tooltips:** Hovering over a node reveals a cleanly truncated, flattened snippet of the note's content, keeping the graph uncluttered but highly informative.
-  - **Resilient Connections:** Upgraded the database connection pool to gracefully handle Neon's idle connection timeouts, preventing unexpected SSL drops.
-- **Graph Search & Highlight:** Added a sleek, fixed-width search bar to the Knowledge Graph control panel. Typing a keyword instantly dims non-matching nodes and highlights relevant ones, making navigation effortless without breaking the graph structure or causing layout shifts.
-- **Critical Database & Retrieval Stabilization:** Resolved silent data rollbacks by explicitly adding `conn.commit()` calls across `notes.py`, `review.py`, and `generate.py`. Hardened Row Level Security (RLS) policies for `critique_sessions` and `critique_turns` to prevent foreign key violations. Additionally, fixed JSON parsing errors in `retrieval.py` to handle malformed LLM responses gracefully, and temporarily used a backfill utility `fix_embeddings.py` to ensure all previously approved notes have valid vector embeddings for search.
+  - **Tactical Tooltips:** Hovering over a node reveals a cleanly truncated, flattened snippet of the note's content.
+  - **Resilient Connections:** Upgraded the database connection pool to gracefully handle Neon's idle connection timeouts.
+- **Graph Search & Highlight:** Added a sleek, fixed-width search bar to the Knowledge Graph control panel. Typing a keyword instantly dims non-matching nodes and highlights relevant ones.
+- **Critical Database & Retrieval Stabilization:** Resolved silent data rollbacks by explicitly adding `conn.commit()` calls across `notes.py`, `review.py`, and `generate.py`. Hardened Row Level Security (RLS) policies for `critique_sessions` and `critique_turns` to prevent foreign key violations. Additionally, fixed JSON parsing errors in `retrieval.py` to handle malformed LLM responses gracefully.
 
 ## 12. Potential Future Adjustments to the Set Parameters
 
@@ -175,7 +181,7 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
    - *What it does:* The minimum similarity score required for a note to be considered.
    - *When to change it:* As your database grows significantly.
    - *The Risk:* "Noise Floor." Right now, 0.20 is very loose, which is great for finding everything. But when you have 1,000 notes, a 0.20 threshold will pull in hundreds of completely irrelevant notes, crashing your re-ranker or blowing up your token costs.
-   - *The Fix:* You will likely need to tighten this to 0.35 or 0.45 as your DB grows. Because your Topic Filtering (Phase 4) is now doing the heavy lifting for broad recall, you can afford to make the raw vector search stricter.
+   - *The Fix:* You will likely need to tighten this to 0.35 or 0.45 as your DB grows. Because your Topic Filtering is now doing the heavy lifting for broad recall, you can afford to make the raw vector search stricter.
 
 ## 13. Running the Application
 
@@ -200,4 +206,4 @@ Not built for scale or multi-tenant SaaS — built for one user's personal refle
      ```bash
      pip install -r requirements.txt && cd dashboard && npm install && npm run build
      ```
-   - **CRITICAL:** The `DATABASE_URL` environment variable in Render **must** point to the restricted `app_user` (not the database owner) to ensure Row Level Security functions correctly. Example format: `postgresql://app_user:AppUser#2026$SecurePass!@ep-xyz...neon.tech/neondb?sslmode=require`.
+   - **CRITICAL:** The `DATABASE_URL` environment variable in Render **must** point to the restricted `app_user` (not the database owner) to ensure Row Level Security functions correctly. Example format: `postgresql://app_user:AppUser#2026$SecurePass!@ep-xyz...neon.tech/neondb?sslmode=require`
