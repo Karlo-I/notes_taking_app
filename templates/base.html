@@ -166,7 +166,14 @@
         window.openNoteFromOutput = function(noteId) { loadNoteDetails(noteId); };
 
         function openNewNoteModal() {
-            const body = `<form id="new-note-form" onsubmit="submitNewNote(event)"><textarea name="content" class="form-control" rows="6" placeholder="Write your note..." required></textarea></form>`;
+            const body = `
+                <form id="new-note-form" onsubmit="submitNewNote(event)">
+                    <textarea name="content" class="form-control" rows="6" placeholder="Write your note..." required></textarea>
+                    <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; color: #8b949e; font-size: 14px;">
+                        <input type="checkbox" id="skip-critic" name="skip_critic" style="width: 16px; height: 16px; cursor: pointer;">
+                        <label for="skip-critic" style="cursor: pointer; margin: 0;">Skip AI Critic (Auto-approve)</label>
+                    </div>
+                </form>`;
             const footer = `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button><button type="submit" form="new-note-form" class="btn">Submit Note</button>`;
             openModal('New Note', body, footer);
         }

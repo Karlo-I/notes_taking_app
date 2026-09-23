@@ -59,12 +59,12 @@ def new():
     classify_result = classify_note(content)
     note_type = classify_result["type"]
 
-    if note_type == "question":
-        # Open questions skip critique entirely -- interrogating a question
-        # about not being answerable enough, before it's even allowed to be
-        # saved, is a strange loop that doesn't protect against anything the
-        # way it does for a claim (misinformation risk) or a reflection
-        # (genuine self-understanding benefit). Auto-approved immediately.
+    # Check if the user toggled the "Skip AI Critic" option in the modal
+    skip_critic = request.form.get("skip_critic") == "on"
+
+    # The "Fast Track": Questions always skip critique. 
+    # Claims/Reflections skip critique ONLY if the user checked the box.
+    if note_type == "question" or skip_critic:
         with get_user_scoped_connection(session["user_id"]) as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -80,7 +80,7 @@ def new():
 
         embedding = embed_and_store(note_id, saved_content)
         run_integration(note_id, saved_content, embedding)       
-        extract_and_save_topics(session["user_id"], note_id, saved_content) # Ensure Questions also get a topic extraction similar to Claims and Reflections as per notes.py
+        extract_and_save_topics(session["user_id"], note_id, saved_content) # Ensure Questions also get a topic extraction similar to Claims and Reflections
 
         return redirect(url_for("notes.index"))
 
