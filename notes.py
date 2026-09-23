@@ -18,6 +18,7 @@ from db import get_user_scoped_connection
 from decorators import require_login
 from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
 from review import begin_critique_session, embed_and_store, run_integration
+from topics import extract_and_save_topics
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/notes")
 
@@ -78,7 +79,8 @@ def new():
             conn.commit()
 
         embedding = embed_and_store(note_id, saved_content)
-        run_integration(note_id, saved_content, embedding)
+        run_integration(note_id, saved_content, embedding)       
+        extract_and_save_topics(session["user_id"], note_id, saved_content) # Ensure Questions also get a topic extraction similar to Claims and Reflections as per notes.py
 
         return redirect(url_for("notes.index"))
 

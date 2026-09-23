@@ -390,7 +390,7 @@ body.login-body { display: flex !important; justify-content: center; align-items
 
 .app-footer { margin-top: 12px; padding: 20px 0; border-top: 1px solid var(--border-color); text-align: center; }
 .footer-content { max-width: 800px; margin: 0 auto; }
-.footer-statement, .footer-social, .footer-copyright { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; }
+.footer-statement, .footer-social, .footer-copyright { font-size: 10px; color: var(--text-secondary); margin-bottom: 0px; }
 .footer-social a { color: var(--primary); text-decoration: none; }
 .footer-social a:hover { text-decoration: underline; color: var(--primary-hover); }
 
