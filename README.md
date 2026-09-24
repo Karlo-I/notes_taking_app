@@ -4,7 +4,7 @@
 
 **AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic) and Qwen. All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
 
-**Last updated:** September 23, 2026
+**Last updated:** September 24, 2026
 
 ---
 
@@ -12,7 +12,7 @@
 
 A personal note-taking and reflection tool with one core mechanic: an AI critic sits between a raw note and the permanent knowledge base (the term 'memory bank' is used interchangeably here), and nothing enters storage until the user has satisfied the critique. The AI's role is to sharpen thinking before it's recorded, not to record thinking uncritically. Output generation (Q&A doc, narration script, summary) draws on the resulting knowledge base but does not carry its own critique cycle — that friction lives only at the point of capture. Users retain ultimate sovereignty via a "Skip Critic" toggle for instant auto-approval when desired.
 
-## 2. System architecture — two pipelines
+## 2. System architecture — three pipelines
 
 **Note ingestion:**
 Raw note → AI classification (Claim / Reflection / Question) → [Optional: Critic dialogue loop] → Integration agent (merge / link / new) + Topic Extraction → Memory bank
@@ -20,7 +20,13 @@ Raw note → AI classification (Claim / Reflection / Question) → [Optional: Cr
 **Output generation:**
 Topic or question → Topic identification (LLM maps query to existing KB topics) → Filtered vector search (strictly within matched topics) → LLM re-ranking (filters noise, ranks top 8 snippets) → Draft generation → Final output (screen or PDF)
 
-No critique cycle on the output side — deliberately dropped to cut cost and complexity in half; the note-ingestion critic is where the real value is.
+**Task management (To-Dos):**
+User input (Modal) → Status assignment (Draft / On-going / Complete) → Database insertion with Fractional Indexing (Double Precision) → Instant UI update. 
+*Drag-and-drop reordering:* Uses O(1) mathematical interpolation between adjacent items, avoiding costly O(N) full-list renumbering and ensuring seamless scalability.
+
+*Architectural Philosophy:* 
+- No critique cycle on the output side — deliberately dropped to cut cost and complexity in half; the note-ingestion critic is where the real value is. 
+- Task management is deliberately kept lightweight and client-driven (SortableJS + AJAX) to ensure zero-latency interactions, while the backend handles the precise geometric index calculations.
 
 ## 3. Critic dialogue design
 

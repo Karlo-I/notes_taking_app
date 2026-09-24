@@ -519,50 +519,134 @@ body.login-body { display: flex !important; justify-content: center; align-items
 }
 
 /* ====================================================================
-   8. MOBILE RESPONSIVENESS
+   8. KANBAN BOARD (To-Dos)
    ==================================================================== */
 
-/* Kanban Board Layout (Specific to To-Dos) */
+/* Board Layout */
 .kanban-board {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
+    gap: 20px;
     align-items: start;
+    margin-bottom: 40px;
 }
+
+/* Column Styling */
 .kanban-column {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
     padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     min-height: 400px;
 }
+
 .kanban-column h2 {
     font-size: 16px;
     color: var(--text-bright);
-    margin-bottom: 16px;
+    margin: 0 0 12px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+
+/* Scoped badge to prevent conflicts with global styles */
+.kanban-column .badge {
+    background-color: var(--primary);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    box-shadow: none;
+}
+
+/* List Styling */
 .kanban-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    min-height: 50px; /* Drop zone area */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 50px;
 }
+
+/* Card Styling - Stacked Layout */
 .kanban-item {
-    margin-bottom: 12px;
     cursor: grab;
     transition: transform 0.2s;
+    margin-bottom: 0; 
 }
 .kanban-item:active { cursor: grabbing; }
 
-/* Reset card margin inside the list */
-.kanban-item .card { margin-bottom: 0; }
+.kanban-item .card {
+    margin: 0;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column; /* Stacks text and button vertically */
+    align-items: stretch;
+    gap: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s ease;
+}
+
+/* Hover Effect */
+.kanban-item:hover .card {
+    border-color: var(--primary);
+    background-color: rgba(88, 166, 255, 0.05);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Container for Grip + Text */
+.task-content {
+    display: flex;
+    align-items: flex-start; /* Aligns grip with the first line of text */
+    gap: 8px;
+    flex-grow: 1;
+    padding-right: 2px;
+}
+
+.kanban-item .task-text {
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: break-word;
+    flex-grow: 1;
+}
+
+/* Button aligned to the bottom right */
+.kanban-item .card-actions {
+    align-self: flex-start; /* Pushes button to the left */
+    margin-left: 24px; /* Matches the width of the drag icon (16px) + gap (8px) */
+    margin-top: 0; /* Override global margin */
+}
+
+/* Make the delete button more compact */
+.kanban-item .card-actions .btn {
+    padding: 3px 10px; /* Reduced padding for a shorter height */
+    font-size: 12px;   /* Slightly smaller text */
+    line-height: 1.2;  /* Tightens the vertical space */
+}
 
 /* Styling for completed tasks */
-.kanban-item.is-complete .card { opacity: 0.6; }
-.kanban-item.is-complete .card .task-text { text-decoration: line-through; color: var(--text-secondary); }
+.kanban-item.is-complete .card {
+    opacity: 0.5;
+    background-color: rgba(255, 255, 255, 0.01);
+}
+.kanban-item.is-complete .card .task-text {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
 
 /* Dragging ghost style */
 .sortable-ghost { 
@@ -570,4 +654,51 @@ body.login-body { display: flex !important; justify-content: center; align-items
     background: transparent !important;
     border: 2px dashed var(--primary) !important;
     box-shadow: none !important;
+}
+
+/* Drag Handle */
+.drag-handle {
+    color: var(--text-secondary);
+    opacity: 0.4;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    margin-top: 2px; /* Aligns the icon perfectly with the first line of text */
+
+    flex-shrink: 0; 
+    width: 16px;
+    height: 16px;
+}
+
+.kanban-item:hover .drag-handle {
+    opacity: 1;
+    color: var(--text-bright);
+}
+
+/* Helper text under the main page title */
+.page-helper-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: -20px 0 24px 0;
+    font-style: italic !important;
+}
+
+/* ====================================================================
+   9. KANBAN MOBILE FIX
+   ==================================================================== */
+   @media (max-width: 768px) {
+    .kanban-board {
+        grid-template-columns: 1fr; 
+        gap: 16px; 
+    }
+
+    .kanban-column {
+        min-height: auto; 
+    }
+
+    /* OVERRIDE GLOBAL MOBILE CARD MARGIN */
+    .kanban-item .card {
+        margin-bottom: 0 !important; 
+    }
 }

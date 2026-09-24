@@ -18,7 +18,6 @@ def index():
     
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
-            # ORDER BY still works perfectly with DOUBLE PRECISION floats
             cur.execute(
                 "SELECT id, content, status, order_index, created_at "
                 "FROM todo_items WHERE user_id = %s "
@@ -43,23 +42,29 @@ def index():
 @todos_bp.route("/new", methods=["POST"])
 @require_login
 def create():
-    """Create a new task. Returns JSON for seamless UI."""
+    """Create a new task. Accepts status from modal."""
     content = request.form.get("content", "").strip()
+    status = request.form.get("status", "draft").strip().lower()
+
+    # Validate status to prevent bad data
+    if status not in ['draft', 'ongoing', 'complete']:
+        status = 'draft'
+
     if not content:
         abort(400)
 
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
-            # MAX + 1 still works perfectly for appending to the bottom of a float list
+            # Calculate next index for the SPECIFIC status chosen
             cur.execute(
-                "SELECT COALESCE(MAX(order_index), 0) + 1 FROM todo_items WHERE user_id = %s AND status = 'draft'",
-                (session["user_id"],)
+                "SELECT COALESCE(MAX(order_index), 0) + 1 FROM todo_items WHERE user_id = %s AND status = %s",
+                (session["user_id"], status)
             )
             next_order = cur.fetchone()[0]
 
             cur.execute(
-                "INSERT INTO todo_items (user_id, content, status, order_index) VALUES (%s, %s, 'draft', %s) RETURNING id",
-                (session["user_id"], content, next_order)
+                "INSERT INTO todo_items (user_id, content, status, order_index) VALUES (%s, %s, %s, %s) RETURNING id",
+                (session["user_id"], content, status, next_order)
             )
             new_id = cur.fetchone()[0]
         conn.commit()
@@ -67,6 +72,7 @@ def create():
     return jsonify({
         "id": str(new_id),
         "content": content,
+        "status": status,
         "order_index": next_order
     })
 
@@ -86,7 +92,6 @@ def reorder():
 
     with get_user_scoped_connection(session["user_id"]) as conn:
         with conn.cursor() as cur:
-            # 1. Get the indices of the neighbors
             prev_index = None
             next_index = None
 
@@ -100,7 +105,6 @@ def reorder():
                 row = cur.fetchone()
                 if row: next_index = row[0]
 
-            # 2. Calculate the new fractional index
             new_index = 0.0
             if prev_index is not None and next_index is not None:
                 new_index = (prev_index + next_index) / 2.0
@@ -109,9 +113,8 @@ def reorder():
             elif next_index is not None:
                 new_index = next_index - 1.0
             else:
-                new_index = 1.0 # Empty list
+                new_index = 1.0
 
-            # 3. Update ONLY the single item that was moved
             cur.execute(
                 "UPDATE todo_items SET status = %s, order_index = %s WHERE id = %s AND user_id = %s",
                 (new_status, new_index, str(item_id), session["user_id"])
