@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}To-Dos{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<div class="page-header">
+    <div>
+        <h1>To-Dos</h1>
+        <p class="page-helper-text">Drag items to reorder or move them between columns.</p>
+    </div>
+    <button type="button" class="btn" id="open-task-modal-btn">+ New Task</button>
+</div>
+
+<div class="kanban-board">
+    <!-- DRAFT COLUMN -->
+    <div class="kanban-column">
+        <h2>Draft <span class="badge">{{ todos['draft']|length }}</span></h2>
+        <ul class="kanban-list" id="list-draft" data-status="draft">
+            {% for item in todos['draft'] %}
+            <li class="kanban-item" data-id="{{ item['id'] }}">
+                <div class="card">
+                    <div class="task-content">
+                        <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
+                        <span class="task-text">{{ item['content'] }}</span>
+                    </div>
+                    <div class="card-actions">
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- ON-GOING COLUMN -->
+    <div class="kanban-column">
+        <h2>On-going <span class="badge">{{ todos['ongoing']|length }}</span></h2>
+        <ul class="kanban-list" id="list-ongoing" data-status="ongoing">
+            {% for item in todos['ongoing'] %}
+            <li class="kanban-item" data-id="{{ item['id'] }}">
+                <div class="card">
+                    <div class="task-content">
+                        <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
+                        <span class="task-text">{{ item['content'] }}</span>
+                    </div>
+                    <div class="card-actions">
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- COMPLETE COLUMN -->
+    <div class="kanban-column">
+        <h2>Complete <span class="badge">{{ todos['complete']|length }}</span></h2>
+        <ul class="kanban-list" id="list-complete" data-status="complete">
+            {% for item in todos['complete'] %}
+            <li class="kanban-item is-complete" data-id="{{ item['id'] }}">
+                <div class="card">
+                    <div class="task-content">
+                        <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
+                        <span class="task-text">{{ item['content'] }}</span>
+                    </div>
+                    <div class="card-actions">
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- NEW TASK MODAL (Matches existing New Note/Output modals) -->
+<div class="modal-overlay" id="new-task-modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 style="margin:0;">New Task</h2>
+            <button type="button" class="close-btn" id="close-task-modal-btn">&times;</button>
+        </div>
+        <form id="new-task-form">
+            <div class="modal-body">
+                <textarea name="content" class="form-control" placeholder="Write your task..." rows="4" required style="margin-bottom: 16px;"></textarea>
+                <select name="status" class="form-control">
+                    <option value="draft">Draft</option>
+                    <option value="ongoing">On-going</option>
+                    <option value="complete">Complete</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-task-modal-btn">Cancel</button>
+                <button type="submit" class="btn">Submit Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // --- MODAL LOGIC (Specific to To-Dos) ---
+    const modal = document.getElementById('new-task-modal');
+    const openBtn = document.getElementById('open-task-modal-btn');
+    const closeBtn = document.getElementById('close-task-modal-btn');
+    const cancelBtn = document.getElementById('cancel-task-modal-btn');
+    const taskForm = document.getElementById('new-task-form');
+    const submitBtn = taskForm ? taskForm.querySelector('button[type="submit"]') : null;
+
+    function openModal() { if (modal) modal.classList.add('active'); }
+    function closeModal() {
+        if (modal) modal.classList.remove('active');
+        if (taskForm) taskForm.reset();
+        // Reset button state
+        if (submitBtn) {
+            submitBtn.textContent = 'Submit Task';
+            submitBtn.disabled = false;
+        }
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    // --- SEAMLESS TASK CREATION WITH LOADING STATE ---
+    if (taskForm) {
+        taskForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 1. LOADING STATE: Update button and disable it to prevent double-clicks
+            if (submitBtn) {
+                submitBtn.textContent = 'Submitting...';
+                submitBtn.disabled = true;
+            }
+
+            const formData = new FormData(this);
+            const content = formData.get('content').trim();
+            if (!content) return;
+
+            fetch('/todos/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(formData)
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+            })
+            .then(data => {
+                const li = document.createElement('li');
+                li.className = `kanban-item ${data.status === 'complete' ? 'is-complete' : ''}`;
+                li.dataset.id = data.id;
+                
+                // Added the drag-handle icon here
+                li.innerHTML = `
+                    <div class="card">
+                        <div class="task-content">
+                            <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
+                            <span class="task-text">${data.content}</span>
+                        </div>
+                        <div class="card-actions">
+                            <form action="/todos/${data.id}/delete" method="POST" style="margin:0;">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                
+                const targetList = document.getElementById(`list-${data.status}`);
+                targetList.appendChild(li);
+                
+                const badge = targetList.closest('.kanban-column').querySelector('.badge');
+                if (badge) badge.textContent = targetList.children.length;
+                
+                // Re-initialize Lucide icons so the new grip icon renders
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+                
+                setTimeout(() => { window.location.reload(); }, 300);
+            })
+            .catch(err => {
+                console.error('Error creating task:', err);
+                if (submitBtn) {
+                    submitBtn.textContent = 'Submit Task';
+                    submitBtn.disabled = false;
+                }
+                alert('Failed to create task. Please try again.');
+            });
+        });
+    }
+
+    // --- DRAG & DROP LOGIC ---
+    const lists = ['draft', 'ongoing', 'complete'];
+    lists.forEach(status => {
+        const el = document.getElementById(`list-${status}`);
+        if (el) {
+            new Sortable(el, {
+                group: 'todos', 
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const newStatus = evt.to.dataset.status;
+                    const item = evt.item;
+
+                    if (newStatus === 'complete') {
+                        item.classList.add('is-complete');
+                    } else {
+                        item.classList.remove('is-complete');
+                    }
+
+                    const children = Array.from(evt.to.children);
+                    const newIndex = evt.newIndex;
+                    const prev_id = newIndex > 0 ? children[newIndex - 1].dataset.id : null;
+                    const next_id = newIndex < children.length - 1 ? children[newIndex + 1].dataset.id : null;
+
+                    const payload = {
+                        new_status: newStatus,
+                        item_id: item.dataset.id,
+                        prev_id: prev_id,
+                        next_id: next_id
+                    };
+
+                    fetch('/todos/reorder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }).then(response => {
+                        if (response.ok) {
+                            // Also reload here to guarantee UI matches DB after drag-and-drop
+                            setTimeout(() => window.location.reload(), 300);
+                        } else {
+                            console.error('Failed to reorder');
+                            window.location.reload(); 
+                        }
+                    });
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock %}

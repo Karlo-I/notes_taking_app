@@ -45,6 +45,10 @@
                 <i data-lucide="layout-dashboard"></i>
                 <span class="nav-text">Dashboard</span>
             </a>
+            <a href="{{ url_for('todos.index') }}" class="nav-item {{ 'active' if request.endpoint == 'todos.index' }}" data-tooltip="To-Dos">
+                <i data-lucide="check-square"></i>
+                <span class="nav-text">To-Dos</span>
+            </a>
             <a href="{{ url_for('notes.search') }}" class="nav-item {{ 'active' if request.endpoint == 'notes.search' }}" data-tooltip="Search">
                 <i data-lucide="search"></i>
                 <span class="nav-text">Search</span>

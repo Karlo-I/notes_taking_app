@@ -67,6 +67,9 @@ def create_app():
     from notes import notes_bp
     app.register_blueprint(notes_bp)
 
+    from todos import todos_bp
+    app.register_blueprint(todos_bp)
+
     from review import review_bp
     app.register_blueprint(review_bp)
 

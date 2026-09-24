@@ -267,3 +267,32 @@ ANALYZE outputs;
 ANALYZE critique_sessions;
 ANALYZE topics;
 ANALYZE note_topics;
+
+-- ---------------------------------------------------------------------------
+-- To-Do List Module
+-- ---------------------------------------------------------------------------
+
+-- 1. Create the todo_items table
+CREATE TABLE todo_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'ongoing', 'complete')),
+    order_index DOUBLE PRECISION NOT NULL DEFAULT 0, -- Used for manual reordering within status groups
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 2. Enable Row Level Security
+ALTER TABLE todo_items ENABLE ROW LEVEL SECURITY;
+
+-- 3. Create RLS Policy (Reusing the exact same pattern as notes/outputs)
+CREATE POLICY todo_items_isolation ON todo_items
+    USING (user_id = current_setting('app.current_user_id', true)::uuid);
+
+-- 4. Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_todo_items_user_id ON todo_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_todo_items_user_status ON todo_items(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_todo_items_user_order ON todo_items(user_id, status, order_index);
+
+-- Update statistics
+ANALYZE todo_items;
