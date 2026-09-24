@@ -167,7 +167,7 @@
                             <span class="task-text">${data.content}</span>
                         </div>
                         <div class="card-actions">
-                            <form action="/todos/${data.id}/delete" method="POST" style="margin:0;">
+                            <form action="/todos/${data.id}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
                                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                             </form>
                         </div>
