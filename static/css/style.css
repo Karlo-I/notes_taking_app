@@ -81,7 +81,20 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     z-index: 1000;
 }
 
+/* Sidebar Divider Line */
+.nav-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 8px 12px; /* Aligns with the padding of the nav items */
+    transition: opacity 0.2s;
+}
+
 .sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+
+/* Hide the divider when sidebar is collapsed to keep it clean */
+.sidebar.collapsed .nav-divider {
+    display: none;
+}
 
 .sidebar-header {
     padding: 20px 16px;
@@ -242,6 +255,7 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 8px 16px;
+    margin-bottom: 40px;
 }
 .notes-grid .card, .outputs-grid .card {
     margin-bottom: 8px;
@@ -459,6 +473,15 @@ body.login-body { display: flex !important; justify-content: center; align-items
         border-right: none !important;
     }
 
+    /* Sidebar Divider Line */
+    .nav-divider {
+        height: 1px;
+        background-color: var(--border-color);
+        margin: 8px 12px; /* Aligns with the padding of the nav items */
+        transition: opacity 0.2s;
+    }
+
+
     .sidebar.open { transform: translateX(0) !important; }
     
     .sidebar.open .nav-text,
@@ -506,8 +529,9 @@ body.login-body { display: flex !important; justify-content: center; align-items
     .notes-grid, .outputs-grid {
         grid-template-columns: 1fr !important;
         gap: 2px !important;
+        margin-bottom: 40px;
     }
-    .notes-grid .card, .outputs-grid {
+    .notes-grid .card, .outputs-grid .card{
         padding: 12px !important;
     }
 
