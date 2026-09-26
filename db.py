@@ -18,7 +18,7 @@ def get_user_scoped_connection(user_id):
         
     except psycopg2.OperationalError:
         if not is_retry:
-            # 1. The connection is dead (e.g., Neon idle timeout). Discard it.
+            # 1. The connection is dead (e.g., Render/Neon idle timeout). Discard it.
             try:
                 _pool.putconn(conn, close=True)
             except Exception:
@@ -52,21 +52,52 @@ def get_user_scoped_connection(user_id):
         if conn and conn.closed == 0:
             _pool.putconn(conn)
 
+
 @contextmanager
 def get_unscoped_connection():
+    """Added retry logic to match get_user_scoped_connection and prevent OAuth crashes."""
     conn = _pool.getconn()
+    is_retry = False
+    
     try:
         yield conn
         conn.commit()
+        
+    except psycopg2.OperationalError:
+        if not is_retry:
+            # 1. The connection is dead (e.g., Render/Neon idle timeout). Discard it.
+            try:
+                _pool.putconn(conn, close=True)
+            except Exception:
+                pass
+            
+            # 2. Get a brand new connection and try exactly one more time
+            conn = _pool.getconn()
+            is_retry = True
+            yield conn
+            conn.commit()
+        else:
+            # If it fails twice, the database is actually down. Let it crash.
+            raise
+            
     except Exception:
+        # For other errors, try to rollback normally
         try:
             conn.rollback()
-        except Exception:
-            pass
+        except psycopg2.InterfaceError:
+            # If rollback fails because the connection is dead, discard it
+            try:
+                _pool.putconn(conn, close=True)
+            except Exception:
+                pass
+            conn = None # Prevent the finally block from returning a dead connection
         raise
+        
     finally:
+        # Only return the connection to the pool if it's still alive
         if conn and conn.closed == 0:
             _pool.putconn(conn)
+
 
 def vector_literal(embedding):
     return "[" + ",".join(repr(float(x)) for x in embedding) + "]"
