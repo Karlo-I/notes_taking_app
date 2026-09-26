@@ -18,12 +18,19 @@
     <div class="kanban-column">
         <h2>Draft <span class="badge">{{ todos['draft']|length }}</span></h2>
         <ul class="kanban-list" id="list-draft" data-status="draft">
+            {% if not todos['draft'] %}
+            <li class="empty-state">No drafts yet. Create one to start.</li>
+            {% endif %}
+
             {% for item in todos['draft'] %}
             <li class="kanban-item" data-id="{{ item['id'] }}">
                 <div class="card">
                     <div class="task-content">
                         <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
                         <span class="task-text">{{ item['content'] }}</span>
+                        {% if item['due_date'] %}
+                            <span class="task-due-date">{{ item['due_date'] }}</span>
+                        {% endif %}
                     </div>
                     <div class="card-actions">
                         <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
@@ -40,12 +47,19 @@
     <div class="kanban-column">
         <h2>On-going <span class="badge">{{ todos['ongoing']|length }}</span></h2>
         <ul class="kanban-list" id="list-ongoing" data-status="ongoing">
+            {% if not todos['ongoing'] %}
+            <li class="empty-state">Drop tasks here to work on them.</li>
+            {% endif %}
+    
             {% for item in todos['ongoing'] %}
             <li class="kanban-item" data-id="{{ item['id'] }}">
                 <div class="card">
                     <div class="task-content">
                         <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
                         <span class="task-text">{{ item['content'] }}</span>
+                        {% if item['due_date'] %}
+                            <span class="task-due-date">{{ item['due_date'] }}</span>
+                        {% endif %}
                     </div>
                     <div class="card-actions">
                         <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
@@ -59,15 +73,28 @@
     </div>
 
     <!-- COMPLETE COLUMN -->
-    <div class="kanban-column">
-        <h2>Complete <span class="badge">{{ todos['complete']|length }}</span></h2>
+    <div class="kanban-column kanban-column-complete">
+        <h2>
+            <span>Complete</span>
+            <div class="column-header-actions">
+                <button id="clear-completed-btn" class="btn-clear">Clear</button>
+                <span class="badge">{{ todos['complete']|length }}</span>
+            </div>
+        </h2>
         <ul class="kanban-list" id="list-complete" data-status="complete">
+            {% if not todos['complete'] %}
+            <li class="empty-state">Nothing completed yet. Keep going!</li>
+            {% endif %}
+
             {% for item in todos['complete'] %}
             <li class="kanban-item is-complete" data-id="{{ item['id'] }}">
                 <div class="card">
                     <div class="task-content">
                         <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
                         <span class="task-text">{{ item['content'] }}</span>
+                        {% if item['due_date'] %}
+                            <span class="task-due-date">{{ item['due_date'] }}</span>
+                        {% endif %}
                     </div>
                     <div class="card-actions">
                         <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
@@ -91,6 +118,10 @@
         <form id="new-task-form">
             <div class="modal-body">
                 <textarea name="content" class="form-control" placeholder="Write your task..." rows="4" required style="margin-bottom: 16px;"></textarea>
+                <div style="margin-top: 15px;">
+                    <label for="due_date" style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Due Date (Optional)</label>
+                    <input type="date" name="due_date" id="due_date" class="form-control">
+                </div>
                 <select name="status" class="form-control">
                     <option value="draft">Draft</option>
                     <option value="ongoing">On-going</option>
@@ -159,12 +190,15 @@
                 li.className = `kanban-item ${data.status === 'complete' ? 'is-complete' : ''}`;
                 li.dataset.id = data.id;
                 
-                // Added the drag-handle icon here
+                // Added the drag-handle icon and the new due-date layout
                 li.innerHTML = `
                     <div class="card">
                         <div class="task-content">
                             <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
-                            <span class="task-text">${data.content}</span>
+                            <div class="task-details">
+                                <span class="task-text">${data.content}</span>
+                                ${data.due_date ? `<span class="task-due-date">${data.due_date}</span>` : ''}
+                            </div>
                         </div>
                         <div class="card-actions">
                             <form action="/todos/${data.id}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
@@ -246,6 +280,51 @@
             });
         }
     });
+
+    // --- CLEAR COMPLETED LOGIC (with Inline Confirmation) ---
+    const clearBtn = document.getElementById('clear-completed-btn');
+    let isConfirming = false;
+    let confirmTimeout;
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (!isConfirming) {
+                // First click: Change to "Confirm?"
+                isConfirming = true;
+                this.textContent = 'Confirm?';
+                this.classList.add('is-confirming');
+
+                // Auto-revert after 3 seconds if they don't click again
+                confirmTimeout = setTimeout(() => {
+                    isConfirming = false;
+                    this.textContent = 'Clear';
+                    this.classList.remove('is-confirming');
+                }, 3000);
+            } else {
+                // Second click: Actually delete
+                clearTimeout(confirmTimeout);
+                
+                fetch('/todos/clear-completed', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const list = document.getElementById('list-complete');
+                        list.innerHTML = '<li class="empty-state">Nothing completed yet. Keep going!</li>';
+                        
+                        const badge = list.closest('.kanban-column').querySelector('.badge');
+                        if (badge) badge.textContent = '0';
+                    }
+                })
+                .catch(err => console.error('Error clearing tasks:', err));
+
+                // Reset button state
+                isConfirming = false;
+                this.textContent = 'Clear';
+                this.classList.remove('is-confirming');
+            }
+        });
+    }
+
 </script>
 
 {% endblock %}

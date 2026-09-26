@@ -145,7 +145,7 @@ def view(output_id):
         "type": output[1], 
         "topic": output[2],
         "content": safe_content, 
-        "created_at": output[4].strftime('%Y-%m-%d %H:%M') if output[4] else '',
+        "created_at": output[4].strftime('%d/%m/%Y %H:%M') if output[4] else '',
         "model": "Haiku" 
     })
 

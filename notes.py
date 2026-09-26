@@ -122,7 +122,7 @@ def view(note_id):
         "type": note[1], 
         "content": note[2], 
         "status": note[3],
-        "created_at": note[4].strftime('%Y-%m-%d %H:%M') if note[4] else '',
+        "created_at": note[4].strftime('%d/%m/%Y %H:%M') if note[4] else '',
     })
 
 

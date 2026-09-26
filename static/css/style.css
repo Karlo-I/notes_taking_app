@@ -560,10 +560,10 @@ body.login-body { display: flex !important; justify-content: center; align-items
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     min-height: 400px;
 }
 
@@ -591,6 +591,12 @@ body.login-body { display: flex !important; justify-content: center; align-items
     box-shadow: none;
 }
 
+/* Visual Finish Line for the Complete Column */
+.kanban-column-complete {
+    background-color: rgba(46, 160, 67, 0.04); /* Very faint green tint */
+    border-color: rgba(46, 160, 67, 0.2);      /* Slightly green border */
+}
+
 /* List Styling */
 .kanban-list {
     list-style: none;
@@ -613,11 +619,11 @@ body.login-body { display: flex !important; justify-content: center; align-items
 
 .kanban-item .card {
     margin: 0;
-    padding: 12px 14px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column; /* Stacks text and button vertically */
     align-items: stretch;
-    gap: 12px;
+    gap: 10px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background-color: rgba(255, 255, 255, 0.02);
@@ -642,7 +648,7 @@ body.login-body { display: flex !important; justify-content: center; align-items
 }
 
 .kanban-item .task-text {
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.4;
     word-break: break-word;
     flex-grow: 1;
@@ -664,7 +670,7 @@ body.login-body { display: flex !important; justify-content: center; align-items
 
 /* Styling for completed tasks */
 .kanban-item.is-complete .card {
-    opacity: 0.5;
+    opacity: 0.9;
     background-color: rgba(255, 255, 255, 0.01);
 }
 .kanban-item.is-complete .card .task-text {
@@ -708,6 +714,102 @@ body.login-body { display: flex !important; justify-content: center; align-items
     font-style: italic !important;
 }
 
+/* Empty State Styling */
+.empty-state {
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-style: italic;
+    pointer-events: none; /* Prevents empty space from being dragged*/
+    user-select: none;
+}
+
+/* Tiny Clear Button for Complete Column */
+.btn-clear {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    transition: all 0.2s;
+}
+.btn-clear:hover {
+    color: var(--danger);
+    background: rgba(248, 81, 73, 0.1);
+}
+
+/* Inline Confirmation State */
+.btn-clear.is-confirming {
+    color: #f85149 !important; /* Bright red */
+    background: rgba(248, 81, 73, 0.15);
+    font-weight: 600;
+}
+
+/* Groups the badge and clear button on the right side */
+.column-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between the badge and the button */
+}
+
+/* Slight tweak to the clear button to fit better in the header */
+.column-header-actions .btn-clear {
+    margin-left: 0; /* Remove the margin we added earlier since gap handles it now */
+}
+
+/* Container for text and date */
+.task-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-grow: 1;
+}
+
+/* Styling for the due date */
+.task-due-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Fix the date picker to match the dropdown size */
+#due_date {
+    height: 38px !important; /* Forces it to match the dropdown height */
+    padding: 6px 12px !important;
+    font-size: 14px;
+    margin-bottom: 12px; /* Adds space between the date and the status dropdown */
+}
+
+/* Force Date Picker and Dropdown to be identical in size and color */
+#due_date, 
+select.form-control {
+    height: 42px !important; 
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    color: var(--text-bright) !important;
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px !important;
+    box-sizing: border-box;
+    color-scheme: dark; /* <--- MAGIC FIX: Forces browser internal UI to use dark mode colors */
+}
+
+/* Force all internal date parts (numbers and slashes) to explicitly use the bright text color */
+#due_date::-webkit-datetime-edit,
+#due_date::-webkit-datetime-edit-fields-wrapper,
+#due_date::-webkit-datetime-edit-text,
+#due_date::-webkit-datetime-edit-month-field,
+#due_date::-webkit-datetime-edit-day-field,
+#due_date::-webkit-datetime-edit-year-field {
+    color: var(--text-bright) !important; /* <--- EXPLICIT COLOR instead of inherit */
+    padding: 0;
+    margin: 0 !important;
+}
+
 /* ====================================================================
    9. KANBAN MOBILE FIX
    ==================================================================== */
@@ -724,5 +826,6 @@ body.login-body { display: flex !important; justify-content: center; align-items
     /* OVERRIDE GLOBAL MOBILE CARD MARGIN */
     .kanban-item .card {
         margin-bottom: 0 !important; 
+        padding: 10px 12px !important; 
     }
 }
