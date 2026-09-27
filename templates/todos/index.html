@@ -325,6 +325,49 @@
         });
     }
 
+    // --- SMART OUTSIDE CLICK FOR NEW TASK MODAL ---
+    const taskModal = document.getElementById('new-task-modal');
+
+    if (taskModal) {
+        // Helper function to close the modal
+        const closeTaskModal = () => {
+            taskModal.classList.remove('active');
+        };
+
+        // 1. Handle clicking outside the modal
+        taskModal.addEventListener('click', function(e) {
+            // Only trigger if they clicked the dark background overlay
+            if (e.target === this) {
+                const textarea = this.querySelector('textarea');
+                const hasContent = textarea && textarea.value.trim().length > 0;
+
+                if (hasContent) {
+                    if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+                        closeTaskModal();
+                    }
+                } else {
+                    closeTaskModal();
+                }
+            }
+        });
+
+        // 2. Handle the Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && taskModal.classList.contains('active')) {
+                const textarea = taskModal.querySelector('textarea');
+                const hasContent = textarea && textarea.value.trim().length > 0;
+
+                if (hasContent) {
+                    if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+                        closeTaskModal();
+                    }
+                } else {
+                    closeTaskModal();
+                }
+            }
+        });
+    }
+
 </script>
 
 {% endblock %}

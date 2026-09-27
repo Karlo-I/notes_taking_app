@@ -132,11 +132,42 @@
         }
         
         document.getElementById('global-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
+            // Only close if they clicked the background overlay, not the content itself
+            if (e.target === this) {
+
+                // Check if there is a textarea with content inside the modal
+                const textarea = this.querySelector('textarea');
+                const hasContent = textarea && textarea.value.trim().length > 0;
+
+                if (hasContent) {
+                    // If user typed something, ask for confirmation
+                    if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+                        closeModal();
+                    }
+                } else {
+                    // If empty, just close it
+                    closeModal();
+                }
+            } 
         });
         
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                // Also apply the same logic to the Escape key for consistency
+                const modal = document.getElementById('global-modal');
+                if (!modal.classList.contains('active')) return;
+
+                const textarea = modal.querySelector('textarea');
+                const hasContent = textarea && textarea.value.trim().length > 0;
+
+                if (hasContent) {
+                    if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+                        closeModal();
+                    }
+                } else {
+                    closeModal();
+                }
+            }
         });
 
         async function loadNoteDetails(id) {
