@@ -44,12 +44,11 @@
 <style>
     .graph-controls {
         display: flex;
-        gap: 24px;
-        margin-bottom: 20px;
+        flex-wrap: wrap; /* Allows items to wrap to next line */
+        gap: 16px; /* Reduced gap between items */
+        margin-bottom: 20px; /* Reduced from 40px - tighter gap between controls and graph */
         align-items: center;
         padding: 0 5px;
-        flex-wrap: nowrap;
-        margin-bottom: 40px;
     }
     .filter-group {
         display: flex;
@@ -131,12 +130,14 @@
     }
 
     .search-container {
-        margin-left: auto;
+        /* REMOVED: margin-left: auto (this was pushing it to the far right) */
+        width: 100%; /* Forces it to take full width, pushing it to new line */
+        max-width: 300px; /* Prevents it from being too wide */
         position: relative;
         display: flex;
         align-items: center;
         flex-shrink: 0;
-        width: 200px;
+        margin-top: 4px; /* Small gap between the two rows */
     }
     #graph-search {
         background: #0d1117;
@@ -163,7 +164,7 @@
         .filter-group { flex-wrap: wrap !important; gap: 4px !important; }
         .filter-label { display: none !important; }
         .filter-btn { padding: 2px 8px !important; font-size: 9px !important; line-height: 1.2 !important; border-radius: 10px !important; }
-        .search-container { width: 100% !important; margin-left: 0 !important; order: 3; }
+        .search-container { width: 100% !important; margin-left: 0 !important; margin-top: 0 !important; order: 3; max-width: none !important; }
         #graph-search { padding: 5px 10px 5px 28px !important; font-size: 11px !important; border-radius: 14px !important; }
         .zoom-controls { top: 10px !important; right: 10px !important; }
         .zoom-btn { width: 28px !important; height: 28px !important; font-size: 16px !important; }
