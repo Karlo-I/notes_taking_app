@@ -242,8 +242,8 @@
     const options = {
         nodes: {
             scaling: {
-                min: 10,  // Smallest node size (1 connection)
-                max: 25,  // Largest node size (Major Hub). Kept small to prevent overlap.
+                min: 8,  // Smallest node size (1 connection)
+                max: 18,  // Largest node size (Major Hub). Kept small to prevent overlap.
                 label: {
                     enabled: true,
                     min: 10,
@@ -266,15 +266,12 @@
             }
         },
         physics: {
-            stabilization: {
-                iterations: 1000,
-                updateInterval: 25
-            },
+            stabilization: false,
             barnesHut: { 
-                gravitationalConstant: -6000,
-                springLength: 80,
+                gravitationalConstant: -8000,
+                springLength: 200,
                 springConstant: 0.04,
-                centralGravity: 0.4
+                centralGravity: 0.2
             }
         },
         interaction: { 
@@ -298,6 +295,12 @@
     };
 
     const network = new vis.Network(container, data, options);
+
+    // --- CHANGED: Added this to force a smooth camera fit on every load/refresh ---
+    network.fit({ 
+        animation: { duration: 500, easingFunction: 'easeInOutQuad' }, 
+        margin: 50 
+    });
 
     // --- FOCUS MODE: Highlight Neighbors on Hover ---
     let allNodesArray = [];
@@ -347,7 +350,8 @@
                 nodes: { font: { size: 9 }, scaling: { min: 6, max: 15 } },
                 edges: { font: { size: 8 } }
             });
-            network.fit({ animation: { duration: 500 }, margin: 50 });
+            // Note: We don't need to call fit() again here if it already ran on load, 
+            // but we can leave it for resize events if desired.
         }
     }
     adjustGraphForMobile();
