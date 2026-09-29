@@ -179,63 +179,177 @@
     const nodes = new vis.DataSet();
     const edges = new vis.DataSet();
 
-    nodes.add(allNodes.get());
-    edges.add(allEdges.get());
+    // --- Calculate Node Importance ---
+    const connectionCounts = {};
+    allEdges.get().forEach(edge => {
+        connectionCounts[edge.from] = (connectionCounts[edge.from] || 0) + 1;
+        connectionCounts[edge.to] = (connectionCounts[edge.to] || 0) + 1;
+    });
+
+    // --- SHAPES & SCALING ---
+    const sizedNodes = allNodes.get().map(node => {
+        const connections = connectionCounts[node.id] || 0;
+        // Square root smooths the growth. 
+        // 1 connection = value 1. 
+        // 9 connections = value 3. 
+        // 25 connections = value 5.
+        const scaledValue = Math.sqrt(connections); 
+        
+        return { 
+            ...node, 
+            value: scaledValue > 0 ? scaledValue : 1, // Ensure minimum value of 1
+            shape: node.shape === 'box' ? 'box' : 'dot'
+        };
+    });
+
+    nodes.add(sizedNodes);
+
+    // --- EDGE COLORS (No Labels) ---
+    const edgeColorMap = {
+        'Supports': '#3fb950',
+        'Contradicts': '#f85149',
+        'Elaborates': '#58a6ff',
+        'Related': '#8b949e'
+    };
+
+    const edgeDashMap = {
+        'Supports': false,
+        'Contradicts': true,
+        'Elaborates': [5, 5],
+        'Related': false
+    };
+
+    const coloredEdges = allEdges.get().map(edge => {
+        const edgeType = edge.title || 'Related';
+        return {
+            ...edge,
+            color: {
+                color: edgeColorMap[edgeType] || '#8b949e',
+                opacity: 0.4,
+                highlight: '#ffffff'
+            },
+            dashes: edgeDashMap[edgeType] || false,
+            width: 1
+        };
+    });
+
+    edges.add(coloredEdges);
 
     const container = document.getElementById('graph-container');
     const data = { nodes: nodes, edges: edges };
 
-    // Tooltip moved to root level to prevent initialization errors
+    // --- OPTIONS: TIGHT SCALING ---
     const options = {
+        nodes: {
+            scaling: {
+                min: 10,  // Smallest node size (1 connection)
+                max: 25,  // Largest node size (Major Hub). Kept small to prevent overlap.
+                label: {
+                    enabled: true,
+                    min: 10,
+                    max: 14,
+                    maxVisible: 30,
+                    drawThreshold: 5
+                }
+            },
+            font: {
+                color: '#c9d1d9',
+                face: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                size: 11
+            },
+            shadow: {
+                enabled: true,
+                color: 'rgba(0,0,0,0.3)',
+                size: 3,
+                x: 1,
+                y: 1
+            }
+        },
         physics: {
-            stabilization: false,
+            stabilization: {
+                iterations: 1000,
+                updateInterval: 25
+            },
             barnesHut: { 
-                gravitationalConstant: -8000, // repulsion push nodes apart
-                springLength: 200, // length give edges more room
-                centralGravity: 0.3 // keeps the graph from flying off screen
+                gravitationalConstant: -6000,
+                springLength: 80,
+                springConstant: 0.04,
+                centralGravity: 0.4
             }
         },
         interaction: { 
             hover: true, 
-            tooltipDelay: 200 
+            tooltipDelay: 200,
+            hideEdgesOnDrag: true
         },
         tooltip: {
             style: 'background-color: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.4; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 300px; white-space: normal;'
         },
         edges: { 
-            smooth: { type: 'continuous' } 
+            smooth: { type: 'continuous' },
+            arrows: {
+                to: {
+                    enabled: true,
+                    scaleFactor: 0.4,
+                    type: 'arrow'
+                }
+            }
         }
     };
 
     const network = new vis.Network(container, data, options);
 
-    // --- MOBILE RESPONSIVENESS (Consolidated & Safe) ---
-    function adjustGraphForMobile() {
-        // Aligned with CSS media query breakpoint
-        const isMobile = window.innerWidth <= 768; 
+    // --- FOCUS MODE: Highlight Neighbors on Hover ---
+    let allNodesArray = [];
+    let allEdgesArray = [];
+    
+    network.on("hoverNode", function (params) {
+        const hoveredNodeId = params.node;
+        const connectedEdges = network.getConnectedEdges(hoveredNodeId);
+        const connectedNodes = network.getConnectedNodes(hoveredNodeId);
         
+        const updatedNodes = allNodesArray.map(node => {
+            if (node.id === hoveredNodeId || connectedNodes.includes(node.id)) {
+                return { ...node, opacity: 1.0 };
+            } else {
+                return { ...node, opacity: 0.15 };
+            }
+        });
+        
+        const updatedEdges = allEdgesArray.map(edge => {
+            if (connectedEdges.includes(edge.id)) {
+                return { ...edge, opacity: 1.0 };
+            } else {
+                return { ...edge, opacity: 0.05 };
+            }
+        });
+        
+        nodes.update(updatedNodes);
+        edges.update(updatedEdges);
+    });
+
+    network.on("blurNode", function (params) {
+        const resetNodes = allNodesArray.map(node => ({ ...node, opacity: 1.0 }));
+        const resetEdges = allEdgesArray.map(edge => ({ ...edge, opacity: 0.4 }));
+        
+        nodes.update(resetNodes);
+        edges.update(resetEdges);
+    });
+
+    allNodesArray = allNodes.get();
+    allEdgesArray = allEdges.get();
+
+    // --- MOBILE RESPONSIVENESS ---
+    function adjustGraphForMobile() {
+        const isMobile = window.innerWidth <= 768; 
         if (isMobile) {
-            const mobileOptions = {
-                nodes: {
-                    font: { size: 10 },
-                    scaling: { min: 8, max: 15 }
-                },
-                edges: { 
-                    font: { size: 9 },
-                    smooth: { type: 'continuous' } // Explicitly preserve edge styling
-                }
-            };
-            network.setOptions(mobileOptions);
-            
-            setTimeout(() => {
-                network.fit({
-                    animation: { duration: 500, easingFunction: 'easeInOutQuad' },
-                    margin: 50
-                });
-            }, 100);
+            network.setOptions({
+                nodes: { font: { size: 9 }, scaling: { min: 6, max: 15 } },
+                edges: { font: { size: 8 } }
+            });
+            network.fit({ animation: { duration: 500 }, margin: 50 });
         }
     }
-
     adjustGraphForMobile();
     window.addEventListener('resize', adjustGraphForMobile);
 
@@ -267,24 +381,41 @@
             return activeNodeTypes.includes(node.group); 
         });
 
+        const sizedFilteredNodes = filteredNodes.map(node => {
+            const connections = connectionCounts[node.id] || 0;
+            const scaledValue = Math.sqrt(connections);
+            return { ...node, value: scaledValue > 0 ? scaledValue : 1, shape: node.shape === 'box' ? 'box' : 'dot' };
+        });
+
         const filteredEdges = allEdges.get().filter(edge => {
             if (!edge.title) return true; 
             return activeEdgeTypes.includes(edge.title);
         });
 
         nodes.clear();
-        nodes.add(filteredNodes);
+        nodes.add(sizedFilteredNodes);
         edges.clear();
-        edges.add(filteredEdges);
+        edges.add(filteredEdges.map(edge => {
+            const edgeType = edge.title || 'Related';
+            return {
+                ...edge,
+                color: { color: edgeColorMap[edgeType] || '#8b949e', opacity: 0.4, highlight: '#ffffff' },
+                dashes: edgeDashMap[edgeType] || false,
+                width: 1
+            };
+        }));
+        
+        allNodesArray = nodes.get();
+        allEdgesArray = edges.get();
     }
 
     // --- SEARCH & HIGHLIGHT LOGIC ---
     const searchInput = document.getElementById('graph-search');
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();
-        const allNodesArray = allNodes.get();
+        const currentNodes = nodes.get(); 
         
-        const updatedNodes = allNodesArray.map(node => {
+        const updatedNodes = currentNodes.map(node => {
             const textToSearch = (node.title || node.label || '').toLowerCase();
             let opacity = (query.length > 0 && !textToSearch.includes(query)) ? 0.15 : 1;
             return { ...node, opacity: opacity };
@@ -304,4 +435,5 @@
         network.moveTo({ scale: currentScale / 1.3, animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
     });
 </script>
+
 {% endblock %}
