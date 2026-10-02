@@ -844,3 +844,117 @@ select.form-control {
         padding: 10px 12px !important; 
     }
 }
+
+/* ==================================================================== 
+    10. VOICE INPUT MODAL
+    ==================================================================== */
+
+/* 1. Dynamic Padding: Only applies when the mic is active */
+textarea#note-content-textarea.is-listening {
+    padding-bottom: 35px !important; /* Creates the "Safe Zone" for the tip text */
+}
+
+/* 2. Mic Button Styling */
+.mic-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2; /* Ensures it sits above the textarea */
+}
+
+.mic-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-bright);
+}
+
+/* Listening State: Red and Pulsing */
+.mic-btn.is-listening {
+    color: var(--danger);
+    animation: mic-pulse 1.5s infinite;
+}
+
+@keyframes mic-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(248, 81, 73, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
+}
+
+/* 3. Tip Text Styling */
+.voice-tip {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: rgba(13, 17, 23, 0.85); /* Slight background so it's readable over text */
+    padding: 4px 8px;
+    border-radius: 4px;
+    pointer-events: none; /* Allows clicking "through" the text to place cursor */
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+}
+
+/* Visible State for Tip Text */
+.voice-tip.is-visible {
+    opacity: 1;
+}
+
+.voice-lang-select {
+    position: absolute;
+    bottom: 14px;
+    right: 42px; /* Adjusted to sit perfectly next to mic */
+    background: var(--bg-card); 
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 10px;
+    font-family: inherit;
+    height: 26px;
+    padding: 0 20px 0 8px;
+    cursor: pointer;
+    outline: none;
+    z-index: 10;
+    
+    /* Remove default browser styling */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    
+    /* Custom arrow */
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%238b949e%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 10px;
+    
+    /* CRITICAL FIXES */
+    width: 80px; /* Strict width prevents overflow */
+    max-width: 80px;
+    text-overflow: ellipsis;
+    transition: border-color 0.2s ease;
+}
+
+/* Fix the dropdown options list width */
+.voice-lang-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
+.voice-lang-select:hover {
+    border-color: var(--text-secondary);
+}
+
+.voice-lang-select:focus {
+    border-color: var(--primary);
+}

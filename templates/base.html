@@ -118,6 +118,8 @@
 
     <!-- Modal & Utility Scripts -->
     <script>
+        let globalTranscriber = null;
+
         function openModal(title, bodyHtml, footerHtml) {
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-body').innerHTML = bodyHtml;
@@ -203,10 +205,35 @@
 
         window.openNoteFromOutput = function(noteId) { loadNoteDetails(noteId); };
 
+        // Helper function to decode audio into the exact format Whisper needs
+        async function decodeAudioForWhisper(blob) {
+            const arrayBuffer = await blob.arrayBuffer();
+            // Force 16000Hz sample rate
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            // Extract the raw mono channel data
+            return audioBuffer.getChannelData(0);
+        }
+
         function openNewNoteModal() {
             const body = `
                 <form id="new-note-form" onsubmit="submitNewNote(event)">
-                    <textarea name="content" class="form-control" rows="6" placeholder="Write your note..." required></textarea>
+                    <div class="textarea-wrapper" style="position: relative;">
+                        <textarea id="note-content-textarea" name="content" class="form-control" rows="6" placeholder="Write your note..." required></textarea>
+                        
+                        <div id="voice-tip" class="voice-tip">Tip: Say "comma" or "period" to punctuate</div>
+                        
+                        <!-- Language Toggle -->
+                        <select id="voice-lang" class="voice-lang-select">
+                            <option value="en">English</option>
+                            <option value="zh">Mandarin</option>
+                            <option value="es">Spanish</option>
+                            <option value="de">German</option>
+                            <option value="tl">Tagalog</option>
+                        </select>
+
+                        <button type="button" id="mic-btn" class="mic-btn" aria-label="Voice input"><i data-lucide="mic"></i></button>
+                    </div>
                     <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; color: #8b949e; font-size: 14px;">
                         <input type="checkbox" id="skip-critic" name="skip_critic" style="width: 16px; height: 16px; cursor: pointer;">
                         <label for="skip-critic" style="cursor: pointer; margin: 0;">Skip AI Critic (Auto-approve)</label>
@@ -214,6 +241,129 @@
                 </form>`;
             const footer = `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button><button type="submit" form="new-note-form" class="btn">Submit Note</button>`;
             openModal('New Note', body, footer);
+
+            // --- PRIVACY-FIRST VOICE INPUT (TRANSFORMERS.JS) ---
+            const micBtn = document.getElementById('mic-btn');
+            const textarea = document.getElementById('note-content-textarea');
+            const tipText = document.getElementById('voice-tip');
+            
+            let isRecording = false;
+            let mediaRecorder = null;
+            let audioChunks = [];
+            let isModelLoading = false;
+
+            function setUIState(state, message) {
+                if (state === 'loading') {
+                    micBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i>'; 
+                    micBtn.classList.add('is-listening');
+                } else if (state === 'recording') {
+                    micBtn.innerHTML = '<i data-lucide="mic-off"></i>'; 
+                    micBtn.classList.add('is-listening');
+                } else if (state === 'transcribing') {
+                    micBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i>';
+                    micBtn.classList.add('is-listening');
+                } else {
+                    micBtn.innerHTML = '<i data-lucide="mic"></i>';
+                    micBtn.classList.remove('is-listening');
+                }
+                
+                if (message) {
+                    tipText.innerText = message;
+                    tipText.classList.add('is-visible');
+                } else {
+                    tipText.classList.remove('is-visible');
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+
+            micBtn.onclick = async function() {
+                if (isModelLoading) return;
+
+                // 1. LOAD MODEL (Uses global variable so it only downloads once)
+                if (!globalTranscriber) {
+                    isModelLoading = true;
+                    setUIState('loading', "Loading privacy model (~75MB)... Please wait.");
+                    textarea.readOnly = true;
+
+                    try {
+                        const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1');
+                        env.allowLocalModels = false;
+                        env.remoteHost = 'https://huggingface.co/';
+                        env.remotePathTemplate = '{model}/resolve/{revision}/';
+
+                        globalTranscriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+                    } catch (e) {
+                        console.error("Model load failed", e);
+                        alert("Failed to load privacy model.");
+                        setUIState('idle', null);
+                        textarea.readOnly = false;
+                        isModelLoading = false;
+                        return;
+                    }
+                    isModelLoading = false;
+                }
+
+                // 2. TOGGLE RECORDING
+                if (!isRecording) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+                        audioChunks = [];
+
+                        mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+
+                        mediaRecorder.onstop = async () => {
+                            setUIState('transcribing', "Transcribing locally...");
+                            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+
+                            try {
+                                // 1. Get the selected language from the dropdown
+                                const langSelect = document.getElementById('voice-lang');
+                                const selectedLang = langSelect ? langSelect.value : 'en';
+                                console.log("Selected Language Code:", selectedLang);
+
+                                // 2. CRITICAL: Decode audio to raw 16kHz Float32Array
+                                const audioData = await decodeAudioForWhisper(audioBlob);
+                                
+                                // 3. Run transcription on the raw data WITH the language parameter
+                                const result = await globalTranscriber(audioData, { 
+                                    language: selectedLang, // <--- Tells Whisper to listen for 'en' or 'zh'
+                                    task: 'transcribe',
+                                    chunk_length_s: 30, 
+                                    stride_length_s: 5 
+                                });
+                                
+                                if (result && result.text) {
+                                    textarea.value += (textarea.value ? ' ' : '') + result.text.trim();
+                                } else {
+                                    console.log("Empty text returned. Try speaking louder or check language selection.");
+                                }
+                            } catch (err) {
+                                console.error("Transcription error", err);
+                                alert("Transcription failed: " + err.message);
+                            } finally {
+                                setUIState('idle', null);
+                                textarea.readOnly = false;
+                            }
+                        };  
+
+                        mediaRecorder.start();
+                        isRecording = true;
+                        setUIState('recording', "Recording... Click mic to stop.");
+                        textarea.readOnly = true;
+
+                    } catch (err) {
+                        console.error("Mic access denied", err);
+                        alert("Microphone access is required.");
+                        setUIState('idle', null);
+                        textarea.readOnly = false;
+                    }
+                } else {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+            };
         }
 
         async function submitNewNote(event) {
@@ -234,9 +384,151 @@
         }
 
         function openNewOutputModal() {
-            const body = `<form id="new-output-form" onsubmit="submitNewOutput(event)"><textarea name="topic_query" class="form-control mb-4" rows="4" placeholder="Tell me what you need..." required></textarea><select name="output_type" class="form-control"><option value="qna">Q&A Document</option><option value="narration">Narration Script</option><option value="summary">Topic Summary</option></select></form>`;
+            const body = `
+                <form id="new-output-form" onsubmit="submitNewOutput(event)">
+                    <div class="textarea-wrapper" style="position: relative;">
+                        <!-- Note: name="topic_query" is preserved for your backend -->
+                        <textarea id="output-content-textarea" name="topic_query" class="form-control" rows="4" placeholder="Tell me what you need..." required></textarea>
+                        
+                        <div id="output-voice-tip" class="voice-tip">Tip: Say "comma" or "period" to punctuate</div>
+                        
+                        <select id="output-voice-lang" class="voice-lang-select">
+                            <option value="en">English</option>
+                            <option value="zh">Mandarin</option>
+                            <option value="es">Spanish</option>
+                            <option value="de">German</option>
+                            <option value="tl">Tagalog</option>
+                        </select>
+
+                        <button type="button" id="output-mic-btn" class="mic-btn" aria-label="Voice input"><i data-lucide="mic"></i></button>
+                    </div>
+                    
+                    <select name="output_type" class="form-control" style="margin-top: 15px;">
+                        <option value="qna">Q&A Document</option>
+                        <option value="narration">Narration Script</option>
+                        <option value="summary">Topic Summary</option>
+                    </select>
+                </form>`;
             const footer = `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button><button type="submit" form="new-output-form" class="btn">Generate</button>`;
             openModal('New Output', body, footer);
+
+            // --- OUTPUT MODAL VOICE LOGIC ---
+            const micBtn = document.getElementById('output-mic-btn');
+            const textarea = document.getElementById('output-content-textarea');
+            const tipText = document.getElementById('output-voice-tip');
+            
+            let isRecording = false;
+            let mediaRecorder = null;
+            let audioChunks = [];
+            let isModelLoading = false;
+
+            // Reuse the same UI state helper, but scoped to these specific elements
+            function setOutputUIState(state, message) {
+                if (state === 'loading') {
+                    micBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i>'; 
+                    micBtn.classList.add('is-listening');
+                } else if (state === 'recording') {
+                    micBtn.innerHTML = '<i data-lucide="mic-off"></i>'; 
+                    micBtn.classList.add('is-listening');
+                } else if (state === 'transcribing') {
+                    micBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i>';
+                    micBtn.classList.add('is-listening');
+                } else {
+                    micBtn.innerHTML = '<i data-lucide="mic"></i>';
+                    micBtn.classList.remove('is-listening');
+                }
+                
+                if (message) {
+                    tipText.innerText = message;
+                    tipText.classList.add('is-visible');
+                } else {
+                    tipText.classList.remove('is-visible');
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+
+            micBtn.onclick = async function() {
+                if (isModelLoading) return;
+
+                // 1. LOAD MODEL (Reuses the globalTranscriber from the Note modal!)
+                if (!globalTranscriber) {
+                    isModelLoading = true;
+                    setOutputUIState('loading', "Loading privacy model (~75MB)... Please wait.");
+                    textarea.readOnly = true;
+
+                    try {
+                        const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1');
+                        env.allowLocalModels = false;
+                        env.remoteHost = 'https://huggingface.co/';
+                        env.remotePathTemplate = '{model}/resolve/{revision}/';
+
+                        globalTranscriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+                    } catch (e) {
+                        console.error("Model load failed", e);
+                        alert("Failed to load privacy model.");
+                        setOutputUIState('idle', null);
+                        textarea.readOnly = false;
+                        isModelLoading = false;
+                        return;
+                    }
+                    isModelLoading = false;
+                }
+
+                // 2. TOGGLE RECORDING
+                if (!isRecording) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+                        audioChunks = [];
+
+                        mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+
+                        mediaRecorder.onstop = async () => {
+                            setOutputUIState('transcribing', "Transcribing locally...");
+                            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+
+                            try {
+                                const langSelect = document.getElementById('output-voice-lang');
+                                const selectedLang = langSelect ? langSelect.value : 'en';
+
+                                const audioData = await decodeAudioForWhisper(audioBlob);
+                                
+                                const result = await globalTranscriber(audioData, { 
+                                    language: selectedLang, 
+                                    task: 'transcribe',
+                                    chunk_length_s: 30, 
+                                    stride_length_s: 5 
+                                });
+                                
+                                if (result && result.text) {
+                                    textarea.value += (textarea.value ? ' ' : '') + result.text.trim();
+                                }
+                            } catch (err) {
+                                console.error("Transcription error", err);
+                                alert("Transcription failed: " + err.message);
+                            } finally {
+                                setOutputUIState('idle', null);
+                                textarea.readOnly = false;
+                            }
+                        };
+
+                        mediaRecorder.start();
+                        isRecording = true;
+                        setOutputUIState('recording', "Recording... Click mic to stop.");
+                        textarea.readOnly = true;
+
+                    } catch (err) {
+                        console.error("Mic access denied", err);
+                        alert("Microphone access is required.");
+                        setOutputUIState('idle', null);
+                        textarea.readOnly = false;
+                    }
+                } else {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+            };
         }
 
         async function submitNewOutput(event) {

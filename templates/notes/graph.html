@@ -296,7 +296,7 @@
 
     const network = new vis.Network(container, data, options);
 
-    // --- CHANGED: Added this to force a smooth camera fit on every load/refresh ---
+    // --- Added this to force a smooth camera fit on every load/refresh ---
     network.fit({ 
         animation: { duration: 500, easingFunction: 'easeInOutQuad' }, 
         margin: 50 
