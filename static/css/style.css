@@ -248,7 +248,7 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 16px; }
 .card-excerpt { margin: 12px 0; line-height: 1.5; font-size: 15px; font-weight: 500; color: var(--text-primary); }
 .card-actions { margin-top: 16px; }
-.meta { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.meta { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
 
 /* Notes Grid Layout & Scoped Card Tightening */
 .notes-grid, .outputs-grid {
@@ -294,16 +294,16 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 }
 
 .notes-grid .card-actions .btn, .outputs-grid .card-actions .btn {
-    padding: 3px 10px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 11px;
 }
 
 /* Badges */
 .badge {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 4px 10px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     background: var(--primary);
     color: #ffffff;
