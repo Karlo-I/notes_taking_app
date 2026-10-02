@@ -267,12 +267,22 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     border-color: var(--primary);
 }
 .notes-grid .card-header, .outputs-grid .card-header {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     gap: 12px;
 }
+
+/* Force the inner wrapper to push badge and date apart */
+.notes-grid .card-header > div, 
+.outputs-grid .card-header > div {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
 .notes-grid .card-excerpt, .outputs-grid .card-excerpt {
-    margin: 8px 0;
-    font-size: 14px;
+    margin: 6px 0;
+    font-size: 13px;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -280,7 +290,12 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     flex: 1; /* This tells the text area to grow and fill all empty spaces, effectively pushing the view button to the bottom of the card */
 }
 .notes-grid .card-actions, .outputs-grid .card-actions {
-    margin-top: 12px;
+    margin-top: 4px;
+}
+
+.notes-grid .card-actions .btn, .outputs-grid .card-actions .btn {
+    padding: 3px 10px;
+    font-size: 12px;
 }
 
 /* Badges */

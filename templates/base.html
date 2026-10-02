@@ -234,7 +234,7 @@
         }
 
         function openNewOutputModal() {
-            const body = `<form id="new-output-form" onsubmit="submitNewOutput(event)"><textarea name="topic_query" class="form-control mb-4" rows="4" placeholder="e.g. Enter your note here" required></textarea><select name="output_type" class="form-control"><option value="qna">Q&A Document</option><option value="narration">Narration Script</option><option value="summary">Topic Summary</option></select></form>`;
+            const body = `<form id="new-output-form" onsubmit="submitNewOutput(event)"><textarea name="topic_query" class="form-control mb-4" rows="4" placeholder="Tell me what you need..." required></textarea><select name="output_type" class="form-control"><option value="qna">Q&A Document</option><option value="narration">Narration Script</option><option value="summary">Topic Summary</option></select></form>`;
             const footer = `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button><button type="submit" form="new-output-form" class="btn">Generate</button>`;
             openModal('New Output', body, footer);
         }
