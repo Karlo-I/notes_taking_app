@@ -846,19 +846,34 @@ select.form-control {
 }
 
 /* ==================================================================== 
-    10. VOICE INPUT MODAL
-    ==================================================================== */
+   10. VOICE INPUT MODAL (UPDATED WITH FAUX INNER METHOD)
+   ==================================================================== */
 
-/* 1. Dynamic Padding: Only applies when the mic is active */
-textarea#note-content-textarea.is-listening {
-    padding-bottom: 35px !important; /* Creates the "Safe Zone" for the tip text */
+/* 1. The Wrapper: Acts as the visual box and creates the safe zone */
+.textarea-wrapper {
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px !important;
+    background: var(--bg-card) !important; 
+    padding: 10px !important; 
+    padding-bottom: 42px !important; /* THE SAFE ZONE: Keeps text above controls */
+    position: relative;
 }
 
-/* 2. Mic Button Styling */
+/* 2. The Textarea: Blends into the wrapper, preventing text from hiding */
+#note-content-textarea, #output-content-textarea {
+    border: none !important; 
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: transparent !important; 
+    padding-bottom: 0 !important; /* Reset previous padding attempts */
+    resize: vertical; 
+}
+
+/* 3. Mic Button Styling (Preserving your tweaks) */
 .mic-btn {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: 6px;
+    right: 6px;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -869,7 +884,7 @@ textarea#note-content-textarea.is-listening {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2; /* Ensures it sits above the textarea */
+    z-index: 10; /* Increased to sit safely above textarea */
 }
 
 .mic-btn:hover {
@@ -889,39 +904,39 @@ textarea#note-content-textarea.is-listening {
     100% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
 }
 
-/* 3. Tip Text Styling */
+/* 4. Tip Text Styling */
 .voice-tip {
     position: absolute;
-    bottom: 10px;
-    left: 10px;
+    bottom: 6px;
+    left: 6px;
     font-size: 11px;
     color: var(--text-secondary);
-    background: rgba(13, 17, 23, 0.85); /* Slight background so it's readable over text */
+    background: rgba(13, 17, 23, 0.85); 
     padding: 4px 8px;
     border-radius: 4px;
-    pointer-events: none; /* Allows clicking "through" the text to place cursor */
+    pointer-events: none; 
     opacity: 0;
     transition: opacity 0.2s ease;
-    z-index: 2;
+    z-index: 10;
 }
 
-/* Visible State for Tip Text */
 .voice-tip.is-visible {
     opacity: 1;
 }
 
+/* 5. Language Dropdown (Preserving your exact tweaks) */
 .voice-lang-select {
     position: absolute;
-    bottom: 14px;
-    right: 42px; /* Adjusted to sit perfectly next to mic */
+    bottom: 10px; 
+    right: 44px; 
     background: var(--bg-card); 
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    font-size: 10px;
+    font-size: 10px; 
     font-family: inherit;
-    height: 26px;
-    padding: 0 20px 0 8px;
+    height: 26px; 
+    padding: 0 20px 0 8px; 
     cursor: pointer;
     outline: none;
     z-index: 10;
@@ -937,8 +952,8 @@ textarea#note-content-textarea.is-listening {
     background-position: right 8px center;
     background-size: 10px;
     
-    /* CRITICAL FIXES */
-    width: 80px; /* Strict width prevents overflow */
+    /* CRITICAL FIXES (Your tweaks) */
+    width: 80px; 
     max-width: 80px;
     text-overflow: ellipsis;
     transition: border-color 0.2s ease;
@@ -957,4 +972,16 @@ textarea#note-content-textarea.is-listening {
 
 .voice-lang-select:focus {
     border-color: var(--primary);
+}
+
+/* ====================================================================
+   11. ACCESSIBILITY & REDUCED MOTION
+   ==================================================================== */c
+   @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
