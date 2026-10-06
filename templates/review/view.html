@@ -18,13 +18,23 @@
             >{{ note[2] }}</textarea>
             
             <div class="review-actions">
-                <button onclick="editNote()" class="btn btn-secondary">Edit</button>
-                <!-- ADDED 'this' to onclick -->
-                <button onclick="saveNote('{{ note[0] }}', this)" class="btn">Save</button>
-                <button onclick="cancelReview('{{ note[0] }}', this)" class="btn btn-danger">Delete</button>
+                <!-- Edit Button -->
+                <button onclick="editNote()" class="icon-btn" aria-label="Edit note" title="Edit note">
+                    <i data-lucide="pencil"></i>
+                </button>
+                <!-- Save Button -->
+                <button onclick="saveNote('{{ note[0] }}', this)" class="icon-btn" aria-label="Save note" title="Save note">
+                    <i data-lucide="save"></i>
+                </button>
+                <!-- Delete Button -->
+                <form action="/notes/{{ note[0] }}/delete" method="POST" style="display:inline;" class="delete-form">
+                    <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete note">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </form>
             </div>
             <p class="review-helper-text">
-                Click Edit to change the wording. Approve & Save stores whatever's currently shown above and ends the review. Cancel deletes this note entirely.
+                Click Edit to change the wording. Save stores whatever's currently shown above and ends the review. Delete removes this note entirely.
             </p>
         </div>
         
@@ -55,8 +65,10 @@
                 rows="4"
                 placeholder="Reply to the critic..." 
             ></textarea>
-            <!-- ADDED 'this' to onclick -->
-            <button onclick="sendReply('{{ note[0] }}', this)" class="btn" style="margin-top: 16px;">Send Reply</button>
+            <!-- Send Reply Button -->
+            <button onclick="sendReply('{{ note[0] }}', this)" class="icon-btn" aria-label="Send reply" title="Send reply">
+                <i data-lucide="send"></i>
+            </button>
         </div>
     </div>
     
@@ -75,10 +87,9 @@
             const formData = new FormData();
             formData.append('content', content);
             
-            // 1. Save original text and update button state
-            const originalText = btn.innerText;
-            btn.innerText = 'Saving...';
+            // 1. LOADING STATE: Dim the icon and disable it
             btn.disabled = true;
+            btn.style.opacity = '0.5';
             
             try {
                 const res = await fetch(`/notes/${noteId}/review/approve`, { method: 'POST', body: formData });
@@ -87,27 +98,13 @@
                 } else {
                     alert('Error saving note');
                     // 2. Revert on error
-                    btn.innerText = originalText;
                     btn.disabled = false;
+                    btn.style.opacity = '1';
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
-                btn.innerText = originalText;
                 btn.disabled = false;
-            }
-        }
-        
-        function cancelReview(noteId, btn) {
-            if (confirm('Are you sure you want to delete this note?')) {
-                // 1. Update button state (prevents double-click before page unloads)
-                btn.innerText = 'Deleting...';
-                btn.disabled = true;
-                
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = `/notes/${noteId}/delete`;
-                document.body.appendChild(form);
-                form.submit();
+                btn.style.opacity = '1';
             }
         }
         
@@ -121,10 +118,9 @@
             const formData = new FormData();
             formData.append('reply', message);
             
-            // 1. Save original text and update button state
-            const originalText = btn.innerText;
-            btn.innerText = 'Sending...';
+            // 1. LOADING STATE: Dim the icon and disable it
             btn.disabled = true;
+            btn.style.opacity = '0.5';
             
             try {
                 const res = await fetch(`/notes/${noteId}/review/reply`, { method: 'POST', body: formData });
@@ -133,14 +129,16 @@
                 } else {
                     alert('Error sending reply');
                     // 2. Revert on error
-                    btn.innerText = originalText;
                     btn.disabled = false;
+                    btn.style.opacity = '1';
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
-                btn.innerText = originalText;
                 btn.disabled = false;
+                btn.style.opacity = '1';
             }
         }
+
     </script>
+
 {% endblock %}

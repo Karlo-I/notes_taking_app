@@ -23,11 +23,8 @@
                         {{ note[2][:200] }}{% if note[2]|length > 200 %}...{% endif %}
                     </p>
                     <div class="card-actions">
-                        <button 
-                            onclick="loadNoteDetails('{{ note[0] }}')" 
-                            class="btn btn-secondary btn-sm"
-                        >
-                            View Details
+                        <button onclick="loadNoteDetails('{{ note[0] }}')" class="icon-btn" aria-label="View details" title="View details">
+                            <i data-lucide="summary"></i>
                         </button>
                     </div>
                 </div>

@@ -226,6 +226,7 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     transition: all 0.2s ease;
     box-shadow: var(--shadow-sm);
 }
+
 .btn:hover { background: var(--primary-hover); text-decoration: none; color: white; transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .btn:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
 .btn-secondary { background: #21262d; color: var(--text-primary); border: 1px solid var(--border-color); box-shadow: none; }
@@ -233,6 +234,41 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 .btn-danger { background: var(--danger); color: white; }
 .btn-danger:hover { background: var(--danger-hover); color: white; }
 .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* Icon Buttons (Trashcan, Edit, Save, etc.) */
+.icon-btn {
+    background: transparent;
+    border: none;
+    padding: 4px; /* Consistent padding */
+    margin-left: -4px; 
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    vertical-align: middle; /* CRITICAL: Forces inline alignment with other buttons */
+}
+
+/* Force ALL icons inside these buttons to be the exact same size */
+.icon-btn svg {
+    width: 18px; 
+    height: 18px;
+    stroke-width: 2; /* Ensures consistent line thickness */
+}
+
+/* Default hover (for things like Edit) */
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-bright);
+}
+
+/* Specific hover for destructive actions (Delete) */
+.icon-btn-delete:hover {
+    background: rgba(248, 81, 73, 0.1); /* Faint red background using your --danger variable */
+    color: var(--danger);
+}
 
 /* Cards */
 .card {
@@ -296,6 +332,12 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 .notes-grid .card-actions .btn, .outputs-grid .card-actions .btn {
     padding: 4px 10px;
     font-size: 11px;
+}
+
+/* Reset icon margin for Note and Output cards */
+.notes-grid .icon-btn, 
+.outputs-grid .icon-btn {
+    margin-left: 0; 
 }
 
 /* Badges */
@@ -382,7 +424,7 @@ input[type="text"]:focus, textarea:focus, select:focus, .form-control:focus {
 .review-note-textarea { background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; font-size: 15px; line-height: 1.6; resize: vertical; width: 100%; min-height: 120px; font-family: inherit; transition: all 0.2s; color: var(--text-primary); }
 .review-note-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
 .review-note-textarea:disabled { background: var(--bg-card); color: var(--text-secondary); cursor: default; }
-.review-actions { display: flex; gap: 12px; margin-top: 16px; }
+.review-actions { display: flex; gap: 8px; margin-top: 16px; align-items: center;}
 .review-helper-text { font-size: 13px; color: var(--text-secondary); margin-top: 16px; line-height: 1.5; }
 
 /* Dialogue */
@@ -977,11 +1019,78 @@ select.form-control {
 /* ====================================================================
    11. ACCESSIBILITY & REDUCED MOTION
    ==================================================================== */c
-   @media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+}
+
+/* ====================================================================
+   12. UNDO TOAST NOTIFICATION
+   ==================================================================== */
+   .undo-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    
+    /* CRITICAL FIXES FOR CENTERING & MOBILE */
+    white-space: nowrap; /* Forces text and button to stay on one line */
+    width: max-content;  /* Makes the box exactly as wide as its content */
+    max-width: 90vw;     /* Prevents it from going off-screen on small phones */
+}
+
+.undo-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.undo-toast #toast-message {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.undo-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap; /* Ensures the button doesn't shrink */
+}
+
+.undo-btn:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+/* Mobile specific tweak to make it look like a native app notification */
+@media (max-width: 480px) {
+    .undo-toast {
+        bottom: 20px;
+        width: auto;
+        max-width: 90%; 
+        justify-content: space-between; 
     }
 }

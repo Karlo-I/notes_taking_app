@@ -119,6 +119,12 @@
         </div>
     </div>
 
+    <!-- The Undo Toast Notification -->
+    <div id="undo-toast" class="undo-toast">
+        <span id="toast-message">Item deleted.</span>
+        <button id="undo-btn" class="undo-btn">Undo</button>
+    </div>
+
     <!-- Modal & Utility Scripts -->
     <script>
         let globalTranscriber = null;
@@ -181,7 +187,11 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 const body = '<div class="modal-note-content">' + data.content + '</div>';
-                let footer = `<form method="post" action="/notes/${data.id}/delete" class="modal-footer-left" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;"><button type="submit" class="btn btn-danger">Delete</button></form>`;
+                let footer = `<form method="post" action="/notes/${data.id}/delete" class="modal-footer-left delete-form">
+                    <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete note">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </form>`;
                 if (data.status === 'under_review') {
                     footer += `<a href="/notes/${data.id}/review" class="btn">Continue Review</a>`;
                 }
@@ -197,9 +207,26 @@
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 const body = '<div class="modal-output-content">' + data.content + '</div>';
-                let footer = `<form method="post" action="/outputs/${data.id}/delete" class="modal-footer-left" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;"><button type="submit" class="btn btn-danger">Delete</button></form>`;
-                footer += `<a href="/outputs/${data.id}/pdf" class="btn btn-secondary">Download PDF</a>`;
-                footer += `<form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;"><button type="submit" class="btn">Regenerate</button></form>`;
+                
+                // 1. Delete Button (Pushed to the left)
+                let footer = `<form method="post" action="/outputs/${data.id}/delete" class="modal-footer-left delete-form">
+                    <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete output">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </form>`;
+                
+                // 2. Action Buttons (Grouped tightly together)
+                footer += `<div style="display: flex; gap: 8px; align-items: center;">`;
+                footer += `<a href="/outputs/${data.id}/pdf" class="icon-btn" aria-label="Download PDF" title="Download PDF">
+                    <i data-lucide="download"></i>
+                </a>`;
+                footer += `<form method="post" action="/outputs/${data.id}/regenerate" style="display:inline;">
+                    <button type="submit" class="icon-btn" aria-label="Regenerate" title="Regenerate">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                </form>`;
+                footer += `</div>`;
+
                 openModal(`[${data.type.toUpperCase()}] ${data.topic || 'Untitled'}`, body, footer);
             } catch (error) {
                 alert("ERROR: " + error.message);
@@ -569,6 +596,83 @@
                 window.location.reload();
             }
         });
+
+        // --- Undo Toast Logic (Upgraded for Modals, Kanban, and Full Pages) ---
+        const toast = document.getElementById('undo-toast');
+        const undoBtn = document.getElementById('undo-btn');
+        const toastMsg = document.getElementById('toast-message');
+        
+        let deleteTimeout;
+        let itemToRestore = null;
+        let itemToRestoreType = null; // 'kanban', 'modal', 'page', or 'other'
+        let formToSubmit = null;
+
+        // 1. Handle the "Undo" click
+        undoBtn.addEventListener('click', () => {
+            clearTimeout(deleteTimeout); 
+            
+            if (itemToRestore) {
+                if (itemToRestoreType === 'kanban') {
+                    itemToRestore.style.display = ''; 
+                } else if (itemToRestoreType === 'modal') {
+                    itemToRestore.classList.add('active'); 
+                } else if (itemToRestoreType === 'page') {
+                    itemToRestore.style.display = ''; // Bring back the review container
+                }
+            }
+            
+            toast.classList.remove('show');
+            itemToRestore = null;
+            itemToRestoreType = null;
+            formToSubmit = null;
+        });
+
+        // 2. Intercept ALL delete forms across the entire app (using Event Delegation)
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            
+            // Only intercept forms with our specific class
+            if (form.classList.contains('delete-form')) {
+                e.preventDefault(); 
+                
+                // Identify where the form lives
+                const kanbanItem = form.closest('.kanban-item');
+                const modalOverlay = form.closest('.modal-overlay');
+                const reviewContainer = form.closest('.review-container');
+
+                if (kanbanItem) {
+                    kanbanItem.style.display = 'none';
+                    itemToRestore = kanbanItem;
+                    itemToRestoreType = 'kanban';
+                } else if (modalOverlay) {
+                    modalOverlay.classList.remove('active'); // Close the modal visually
+                    itemToRestore = modalOverlay;
+                    itemToRestoreType = 'modal';
+                    // Re-open the main list behind it if needed, or just let the toast handle it
+                } else if (reviewContainer) {
+                    reviewContainer.style.display = 'none'; // Hide the review page content
+                    itemToRestore = reviewContainer;
+                    itemToRestoreType = 'page';
+                } else {
+                    itemToRestore = null;
+                    itemToRestoreType = 'other';
+                }
+
+                formToSubmit = form;
+
+                // Show the toast
+                toastMsg.textContent = 'Item deleted.';
+                toast.classList.add('show');
+
+                // Wait 5 seconds, then actually submit the form to the server
+                deleteTimeout = setTimeout(() => {
+                    if (formToSubmit) {
+                        formToSubmit.submit(); 
+                    }
+                }, 3000);
+            }
+        }, true); // 'true' ensures we catch it in the capture phase before other scripts
+
     </script>
 
     <!-- Sidebar Logic -->

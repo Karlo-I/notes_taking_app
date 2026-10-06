@@ -33,8 +33,11 @@
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        <!-- Added class="delete-form" and removed old onsubmit logic -->
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" class="delete-form">
+                            <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
+                                <i data-lucide="trash-2"></i>
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -62,8 +65,11 @@
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        <!-- Added class="delete-form" and removed old onsubmit logic -->
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" class="delete-form">
+                            <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
+                                <i data-lucide="trash-2"></i>
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -97,8 +103,11 @@
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        <!-- Added class="delete-form" and removed old onsubmit logic -->
+                        <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" class="delete-form">
+                            <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
+                                <i data-lucide="trash-2"></i>
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -149,7 +158,6 @@
     function closeModal() {
         if (modal) modal.classList.remove('active');
         if (taskForm) taskForm.reset();
-        // Reset button state
         if (submitBtn) {
             submitBtn.textContent = 'Submit Task';
             submitBtn.disabled = false;
@@ -166,7 +174,6 @@
         taskForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // 1. LOADING STATE: Update button and disable it to prevent double-clicks
             if (submitBtn) {
                 submitBtn.textContent = 'Submitting...';
                 submitBtn.disabled = true;
@@ -190,7 +197,6 @@
                 li.className = `kanban-item ${data.status === 'complete' ? 'is-complete' : ''}`;
                 li.dataset.id = data.id;
                 
-                // Added the drag-handle icon and the new due-date layout
                 li.innerHTML = `
                     <div class="card">
                         <div class="task-content">
@@ -201,8 +207,11 @@
                             </div>
                         </div>
                         <div class="card-actions">
-                            <form action="/todos/${data.id}/delete" method="POST" style="margin:0;" onsubmit="const btn=this.querySelector('button'); btn.innerText='Deleting...'; btn.disabled=true;">
-                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            <!-- Updated dynamic form to include class="delete-form" -->
+                            <form action="/todos/${data.id}/delete" method="POST" style="margin:0;" class="delete-form">
+                                <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
+                                    <i data-lucide="trash-2"></i>
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -214,7 +223,6 @@
                 const badge = targetList.closest('.kanban-column').querySelector('.badge');
                 if (badge) badge.textContent = targetList.children.length;
                 
-                // Re-initialize Lucide icons so the new grip icon renders
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 }
@@ -269,7 +277,6 @@
                         body: JSON.stringify(payload)
                     }).then(response => {
                         if (response.ok) {
-                            // Also reload here to guarantee UI matches DB after drag-and-drop
                             setTimeout(() => window.location.reload(), 300);
                         } else {
                             console.error('Failed to reorder');
@@ -289,19 +296,16 @@
     if (clearBtn) {
         clearBtn.addEventListener('click', function() {
             if (!isConfirming) {
-                // First click: Change to "Confirm?"
                 isConfirming = true;
                 this.textContent = 'Confirm?';
                 this.classList.add('is-confirming');
 
-                // Auto-revert after 3 seconds if they don't click again
                 confirmTimeout = setTimeout(() => {
                     isConfirming = false;
                     this.textContent = 'Clear';
                     this.classList.remove('is-confirming');
                 }, 3000);
             } else {
-                // Second click: Actually delete
                 clearTimeout(confirmTimeout);
                 
                 fetch('/todos/clear-completed', { method: 'POST' })
@@ -317,7 +321,6 @@
                 })
                 .catch(err => console.error('Error clearing tasks:', err));
 
-                // Reset button state
                 isConfirming = false;
                 this.textContent = 'Clear';
                 this.classList.remove('is-confirming');
@@ -329,14 +332,11 @@
     const taskModal = document.getElementById('new-task-modal');
 
     if (taskModal) {
-        // Helper function to close the modal
         const closeTaskModal = () => {
             taskModal.classList.remove('active');
         };
 
-        // 1. Handle clicking outside the modal
         taskModal.addEventListener('click', function(e) {
-            // Only trigger if they clicked the dark background overlay
             if (e.target === this) {
                 const textarea = this.querySelector('textarea');
                 const hasContent = textarea && textarea.value.trim().length > 0;
@@ -351,7 +351,6 @@
             }
         });
 
-        // 2. Handle the Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && taskModal.classList.contains('active')) {
                 const textarea = taskModal.querySelector('textarea');

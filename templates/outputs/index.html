@@ -23,11 +23,8 @@
                         {{ output[2] or 'Untitled Output' }}
                     </p>
                     <div class="card-actions">
-                        <button 
-                            onclick="loadOutputDetails('{{ output[0] }}')" 
-                            class="btn btn-secondary btn-sm"
-                        >
-                            View Output
+                        <button onclick="loadOutputDetails('{{ output[0] }}')" class="icon-btn" aria-label="View output" title="View output">
+                            <i data-lucide="summary"></i>
                         </button>
                     </div>
                 </div>
