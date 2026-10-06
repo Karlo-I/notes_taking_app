@@ -46,7 +46,6 @@ User input (Modal) → Status assignment (Draft / On-going / Complete) → Datab
 5. Turn-aware behavior — below cap, argue normally; at cap, state the strongest remaining objection and explicitly hand control back to the user
 
 **Escape hatches:** 
-- User can override at any point during review with a required one-line reason. Resolution stored as `approved_clean` / `approved_overridden` / `abandoned`. 
 - **Skip Critic Toggle:** Users can bypass the critique loop entirely at the point of creation for *any* note type, routing it directly to the "Fast Track" (auto-approve, embed, integrate, extract topics).
 
 **Critic reply format:** free text, not structured JSON. Scaffolding (mode, context, turn count) is structured; the critique's voice stays natural.
@@ -81,6 +80,7 @@ When two notes are too similar, the AI merges them into one:
 | `output_sources` | id, output_id, note_id | Provenance — which notes grounded which output |
 | `topics` | id, user_id, name | High-level umbrella concepts extracted from notes (e.g., "US Withholding Tax"). |
 | `users` | id, oauth_provider, oauth_subject_id, email, password_hash, display_name | Identity via OAuth or Email/Password. |
+| `todo_items` | id, user_id, content, status, order_index |
 
 Relationships: users→notes (1:M), notes→note_versions (1:M), notes→critique_sessions→critique_turns (1:M nested), notes↔notes via note_links (self-referencing M:M), notes↔topics via note_topics (M:M), users→outputs (1:M), outputs↔notes via output_sources (M:M).
 
@@ -113,7 +113,7 @@ Model choice: Haiku-class model for critic, classification, integration, and top
 6. Retrieval + output generation (all three output types share this infrastructure)
 7. PDF export
 8. Background run script (start.sh) & Docker auto-start configuration (Note: Local dev uses Docker, but production deployment uses Neon)
-9. UI/UX Overhaul (Sidebar layout, Jinja2 templates, premium CSS)
+9. UI/UX Overhaul (Sidebar layout, Jinja2 templates, premium CSS, buttons vs icons)
 10. Glassmorphism Modal system (replacing separate detail pages)
 11. Global Live Search (autocomplete across Notes & Outputs)
 12. Holistic Analytics Dashboard overhaul (user-scoped metrics, combined heatmap, dual composition charts)
