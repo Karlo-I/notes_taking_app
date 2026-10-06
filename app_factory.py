@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, session, url_for, render_template
+from flask import Flask, redirect, request, session, url_for, render_template, send_from_directory
 from extensions import limiter
 
 # Force load .env file explicitly, preventing reloader quirks
@@ -78,6 +78,9 @@ def create_app():
 
     from search import search_bp
     app.register_blueprint(search_bp)
+
+    from notifications import notifications_bp
+    app.register_blueprint(notifications_bp)
 
     # Register the native Flask analytics blueprint
     from analytics_bp import analytics_bp
@@ -173,4 +176,18 @@ def create_app():
         abort(404)
     # ---------------------------------------
 
+    # --- GLOBAL TEMPLATE VARIABLES ---
+    @app.context_processor
+    def inject_vapid_key():
+        """Makes the Public VAPID key available to all frontend templates."""
+        return dict(public_vapid_key=os.getenv('VAPID_PUBLIC_KEY'))
+    # ---------------------------------
+
+    # --- SERVICE WORKER ROUTE ---
+    @app.route('/sw.js')
+    def serve_sw():
+        """Serves the Service Worker from the root URL."""
+        return send_from_directory(Path(__file__).parent, 'sw.js', mimetype='application/javascript')
+    # ----------------------------
+    
     return app

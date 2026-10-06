@@ -296,3 +296,26 @@ CREATE INDEX IF NOT EXISTS idx_todo_items_user_order ON todo_items(user_id, stat
 
 -- Update statistics
 ANALYZE todo_items;
+
+-- ---------------------------------------------------------------------------
+-- Web Push Notifications
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE push_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Enable Row Level Security
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS Policy
+CREATE POLICY push_subscriptions_isolation ON push_subscriptions
+    USING (user_id = current_setting('app.current_user_id', true)::uuid);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);

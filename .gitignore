@@ -69,3 +69,7 @@ app.log
 # React stuff
 dashboard/node_modules/
 dashboard/dist/
+
+# Cryptographic keys
+private_key.pem
+public_key.pem

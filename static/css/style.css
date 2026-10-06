@@ -335,6 +335,16 @@ input[type="text"]:focus, textarea:focus, select:focus, .form-control:focus {
 .search-input-group { display: flex; gap: 12px; }
 .search-input-group .form-control { flex: 1; }
 
+/* Strip default browser button styles so it perfectly inherits .nav-item styling */
+button.notify-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    width: 100%;
+}
+
 /* ====================================================================
    5. MODALS
    ==================================================================== */
