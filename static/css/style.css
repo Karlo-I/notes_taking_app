@@ -713,6 +713,9 @@ body.login-body { display: flex !important; justify-content: center; align-items
 
 /* Button aligned to the bottom right */
 .kanban-item .card-actions {
+    display: flex; /* Forces buttons into a single row */
+    gap: 8px; /* Space between icons */
+    align-items: center; /* Centers them vertically */
     align-self: flex-start; /* Pushes button to the left */
     margin-left: 24px; /* Matches the width of the drag icon (16px) + gap (8px) */
     margin-top: 0; /* Override global margin */
@@ -720,9 +723,15 @@ body.login-body { display: flex !important; justify-content: center; align-items
 
 /* Make the delete button more compact */
 .kanban-item .card-actions .btn {
-    padding: 3px 10px; /* Reduced padding for a shorter height */
-    font-size: 12px;   /* Slightly smaller text */
-    line-height: 1.2;  /* Tightens the vertical space */
+    padding: 3px 10px; 
+    font-size: 12px;   
+    line-height: 1.2;  
+}
+
+/* Ensure To-Do icons are consistently sized */
+.kanban-item .card-actions .icon-btn svg {
+    width: 18px;
+    height: 18px;
 }
 
 /* Styling for completed tasks */

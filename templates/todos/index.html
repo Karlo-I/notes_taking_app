@@ -33,7 +33,12 @@
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <!-- Added class="delete-form" and removed old onsubmit logic -->
+                        <!-- NEW: Edit Button -->
+                        <button type="button" class="icon-btn edit-btn" data-id="{{ item['id'] }}" aria-label="Edit task" title="Edit task">
+                            <i data-lucide="pencil"></i>
+                        </button>
+                    
+                        <!-- EXISTING: Delete Form -->
                         <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" class="delete-form">
                             <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
                                 <i data-lucide="trash-2"></i>
@@ -65,7 +70,12 @@
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <!-- Added class="delete-form" and removed old onsubmit logic -->
+                        <!-- NEW: Edit Button -->
+                        <button type="button" class="icon-btn edit-btn" data-id="{{ item['id'] }}" aria-label="Edit task" title="Edit task">
+                            <i data-lucide="pencil"></i>
+                        </button>
+                    
+                        <!-- EXISTING: Delete Form -->
                         <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" class="delete-form">
                             <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
                                 <i data-lucide="trash-2"></i>
@@ -103,7 +113,12 @@
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <!-- Added class="delete-form" and removed old onsubmit logic -->
+                        <!-- NEW: Edit Button -->
+                        <button type="button" class="icon-btn edit-btn" data-id="{{ item['id'] }}" aria-label="Edit task" title="Edit task">
+                            <i data-lucide="pencil"></i>
+                        </button>
+                    
+                        <!-- EXISTING: Delete Form -->
                         <form action="/todos/{{ item['id'] }}/delete" method="POST" style="margin:0;" class="delete-form">
                             <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
                                 <i data-lucide="trash-2"></i>
@@ -153,11 +168,25 @@
     const cancelBtn = document.getElementById('cancel-task-modal-btn');
     const taskForm = document.getElementById('new-task-form');
     const submitBtn = taskForm ? taskForm.querySelector('button[type="submit"]') : null;
+    
+    // --- Edit State Variables ---
+    let isEditing = false;
+    let editingId = null;
+    let originalTaskContent = ''; // Tracks the text when the modal first opened
 
-    function openModal() { if (modal) modal.classList.add('active'); }
+    function openModal() { 
+        originalTaskContent = ''; // <--- It's a new task, so original is empty
+        if (modal) modal.classList.add('active'); 
+    }
+    
     function closeModal() {
         if (modal) modal.classList.remove('active');
-        if (taskForm) taskForm.reset();
+        if (taskForm) {
+            taskForm.reset();
+            document.getElementById('modal-title').innerText = 'New Task'; // Reset title
+            isEditing = false; // Reset edit flag
+            editingId = null;  // Reset ID
+        }
         if (submitBtn) {
             submitBtn.textContent = 'Submit Task';
             submitBtn.disabled = false;
@@ -169,9 +198,74 @@
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
     if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-    // --- SEAMLESS TASK CREATION WITH LOADING STATE ---
+    // --- EDIT TASK LOGIC ---
+    document.addEventListener('click', function(e) {
+        const editBtn = e.target.closest('.edit-btn');
+        if (!editBtn) return;
+
+        const item = editBtn.closest('.kanban-item');
+        if (!item) return;
+
+        // Extract current data from the card
+        editingId = editBtn.dataset.id;
+        const content = item.querySelector('.task-text').innerText;
+        const status = item.closest('.kanban-list').dataset.status;
+        const dueDateText = item.querySelector('.task-due-date')?.innerText;
+
+        // Convert DD/MM/YYYY to YYYY-MM-DD for the date input
+        let dueDateVal = '';
+        if (dueDateText) {
+            const parts = dueDateText.split('/');
+            if (parts.length === 3) dueDateVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        // Populate the modal
+        document.querySelector('#new-task-modal textarea[name="content"]').value = content;
+        document.querySelector('#new-task-modal select[name="status"]').value = status;
+        document.querySelector('#new-task-modal input[name="due_date"]').value = dueDateVal;
+
+        // Change Modal Title and set state
+        document.getElementById('modal-title').innerText = 'Edit Task';
+        isEditing = true;
+        originalTaskContent = content;
+
+        // Open the modal
+        if (modal) modal.classList.add('active');
+    });
+
+    // --- SEAMLESS TASK CREATION & EDITING ---
     if (taskForm) {
         taskForm.addEventListener('submit', function(e) {
+            // 1. HANDLE EDITING
+            if (isEditing) {
+                e.preventDefault();
+                
+                if (submitBtn) {
+                    submitBtn.textContent = 'Saving...';
+                    submitBtn.disabled = true;
+                }
+
+                const formData = new FormData(this);
+                fetch(`/todos/${editingId}/edit`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => {
+                    if (res.ok) window.location.reload();
+                    else throw new Error('Network response was not ok');
+                })
+                .catch(err => {
+                    console.error('Error updating task:', err);
+                    if (submitBtn) {
+                        submitBtn.textContent = 'Save Task';
+                        submitBtn.disabled = false;
+                    }
+                    alert('Failed to update task. Please try again.');
+                });
+                return; // Stop here, don't run the creation logic
+            }
+
+            // 2. HANDLE CREATION (Existing Logic)
             e.preventDefault();
             
             if (submitBtn) {
@@ -207,7 +301,9 @@
                             </div>
                         </div>
                         <div class="card-actions">
-                            <!-- Updated dynamic form to include class="delete-form" -->
+                            <button type="button" class="icon-btn edit-btn" data-id="${data.id}" aria-label="Edit task" title="Edit task">
+                                <i data-lucide="pencil"></i>
+                            </button>
                             <form action="/todos/${data.id}/delete" method="POST" style="margin:0;" class="delete-form">
                                 <button type="submit" class="icon-btn icon-btn-delete" aria-label="Delete task">
                                     <i data-lucide="trash-2"></i>
@@ -248,6 +344,8 @@
             new Sortable(el, {
                 group: 'todos', 
                 animation: 150,
+                filter: '.icon-btn, .delete-form', 
+                preventOnFilter: false,             
                 ghostClass: 'sortable-ghost',
                 onEnd: function (evt) {
                     const newStatus = evt.to.dataset.status;
@@ -334,14 +432,31 @@
     if (taskModal) {
         const closeTaskModal = () => {
             taskModal.classList.remove('active');
+            // Ensure edit state is reset if closed via outside click/escape
+            if (taskForm) {
+                taskForm.reset();
+                document.getElementById('modal-title').innerText = 'New Task';
+                isEditing = false;
+                editingId = null;
+                originalTaskContent = ''; // Reset the tracker
+            }
+            if (submitBtn) {
+                submitBtn.textContent = 'Submit Task';
+                submitBtn.disabled = false;
+            }
+        };
+
+        // Helper function to check if text actually changed
+        const hasUnsavedChanges = () => {
+            const textarea = taskModal.querySelector('textarea');
+            if (!textarea) return false;
+            // Compare current text to the text when the modal opened
+            return textarea.value.trim() !== originalTaskContent.trim();
         };
 
         taskModal.addEventListener('click', function(e) {
             if (e.target === this) {
-                const textarea = this.querySelector('textarea');
-                const hasContent = textarea && textarea.value.trim().length > 0;
-
-                if (hasContent) {
+                if (hasUnsavedChanges()) {
                     if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
                         closeTaskModal();
                     }
@@ -353,10 +468,7 @@
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && taskModal.classList.contains('active')) {
-                const textarea = taskModal.querySelector('textarea');
-                const hasContent = textarea && textarea.value.trim().length > 0;
-
-                if (hasContent) {
+                if (hasUnsavedChanges()) {
                     if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
                         closeTaskModal();
                     }

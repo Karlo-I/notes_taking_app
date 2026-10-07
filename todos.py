@@ -144,6 +144,31 @@ def delete(todo_id):
     return redirect(url_for("todos.index"))
 
 
+@todos_bp.route("/<uuid:todo_id>/edit", methods=["POST"])
+@require_login
+def update(todo_id):
+    """Update an existing task."""
+    content = request.form.get("content", "").strip()
+    status = request.form.get("status", "draft").strip().lower()
+    due_date = request.form.get("due_date") or None
+
+    if status not in ['draft', 'ongoing', 'complete']:
+        status = 'draft'
+
+    if not content:
+        abort(400)
+
+    with get_user_scoped_connection(session["user_id"]) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE todo_items SET content = %s, status = %s, due_date = %s WHERE id = %s AND user_id = %s",
+                (content, status, due_date, str(todo_id), session["user_id"])
+            )
+        conn.commit()
+
+    return jsonify({"success": True})
+
+
 @todos_bp.route("/clear-completed", methods=["POST"])
 @require_login
 def clear_completed():
