@@ -84,8 +84,11 @@
             placeholder: 'Write your note...'
         });
         
-        // Set the initial content (Quill expects HTML)
-        reviewQuill.root.innerHTML = initialContent;
+        // Use Quill's built-in method to load HTML. 
+        // This guarantees the "blank" state is updated correctly.
+        if (initialContent) {
+            reviewQuill.clipboard.dangerouslyPasteHTML(initialContent);
+        }
 
         function editNote() {
             // Enable editing in Quill

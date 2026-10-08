@@ -1095,6 +1095,11 @@ select.form-control {
     font-size: 13px !important;
 }
 
+/* SAFETY NET: Force placeholder to hide if editor has content */
+.ql-editor:not(.ql-blank)::before {
+    display: none !important;
+}
+
 /* 4. Toolbar Styling */
 .ql-toolbar.ql-snow {
     background: rgba(255, 255, 255, 0.02) !important;
