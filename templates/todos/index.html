@@ -189,7 +189,7 @@
         placeholder: 'Describe your task...'
     });
 
-    // Track the original text to prevent accidental closures
+    // Track the normalized text to prevent accidental closures
     let originalTaskText = ''; 
 
     // --- TASK VOICE INPUT (Isolated from Notes Mic) ---
@@ -223,7 +223,6 @@
     }
 
     taskMicBtn.onclick = async function() {
-        // Reuse the global transcriber from base.html if it exists
         if (!window.globalTranscriber) {
             setTaskUIState('loading', "Loading privacy model (~75MB)... Please wait.");
             if (window.taskQuill) window.taskQuill.enable(false);
@@ -259,7 +258,6 @@
                         const langSelect = document.getElementById('task-voice-lang');
                         const selectedLang = langSelect ? langSelect.value : 'en';
                         
-                        // Reuse decodeAudioForWhisper from base.html
                         const audioData = await decodeAudioForWhisper(audioBlob);
                         const result = await window.globalTranscriber(audioData, { 
                             language: selectedLang, task: 'transcribe', chunk_length_s: 30, stride_length_s: 5 
@@ -306,13 +304,11 @@
     const taskForm = document.getElementById('new-task-form');
     const submitBtn = taskForm ? taskForm.querySelector('button[type="submit"]') : null;
     
-    // --- Edit State Variables ---
     let isEditing = false;
     let editingId = null;
-    let originalTaskContent = ''; // Tracks the text when the modal first opened
 
     function openModal() { 
-        originalTaskText = ''; // It's a new task, so original is empty
+        originalTaskText = ''; // New task, baseline is empty
         if (modal) modal.classList.add('active'); 
     }
     
@@ -321,9 +317,11 @@
         if (taskForm) {
             taskForm.reset();
             if (window.taskQuill) window.taskQuill.setText('');
-            document.getElementById('modal-title').innerText = 'New Task'; // Reset title
-            isEditing = false; // Reset edit flag
-            editingId = null;  // Reset ID
+            const titleEl = document.getElementById('modal-title');
+            if (titleEl) titleEl.innerText = 'New Task'; 
+            isEditing = false; 
+            editingId = null;  
+            originalTaskText = ''; // Reset baseline
         }
         if (submitBtn) {
             submitBtn.textContent = 'Submit Task';
@@ -336,7 +334,7 @@
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
     if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-    // --- EDIT TASK LOGIC (UPDATED to use raw HTML) ---
+    // --- EDIT TASK LOGIC ---
     document.addEventListener('click', function(e) {
         const editBtn = e.target.closest('.edit-btn');
         if (!editBtn) return;
@@ -344,51 +342,48 @@
         const item = editBtn.closest('.kanban-item');
         if (!item) return;
 
-        // Extract current data from the card
         editingId = editBtn.dataset.id;
-        
-        // UPDATED: Get the RAW HTML from the data attribute instead of innerText
         const rawContent = item.querySelector('.task-text').dataset.rawContent || '';
         const status = item.closest('.kanban-list').dataset.status;
         const dueDateText = item.querySelector('.task-due-date')?.innerText;
 
-        // Convert DD/MM/YYYY to YYYY-MM-DD for the date input
         let dueDateVal = '';
         if (dueDateText) {
             const parts = dueDateText.split('/');
             if (parts.length === 3) dueDateVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
 
-        // Populate the modal with RAW HTML
+        // 1. Populate the modal with RAW HTML
         if (window.taskQuill) {
-            window.taskQuill.root.innerHTML = rawContent; // Use raw HTML here!
-            originalTaskText = window.taskQuill.getText()
+            window.taskQuill.root.innerHTML = rawContent; 
+            
+            // 2. CRITICAL: Wait 10ms for Quill to normalize the HTML (e.g., add trailing newlines)
+            // BEFORE we capture the baseline text.
+            setTimeout(() => {
+                originalTaskText = window.taskQuill.getText().trim();
+            }, 10);
         }
+        
         document.querySelector('#new-task-modal select[name="status"]').value = status;
         document.querySelector('#new-task-modal input[name="due_date"]').value = dueDateVal;
 
-        // Change Modal Title and set state
-        document.getElementById('modal-title').innerText = 'Edit Task';
+        const titleEl = document.getElementById('modal-title');
+        if (titleEl) titleEl.innerText = 'Edit Task';
         isEditing = true;
-        originalTaskContent = rawContent;
 
-        // Open the modal
         if (modal) modal.classList.add('active');
     });
 
     // --- SEAMLESS TASK CREATION & EDITING ---
     if (taskForm) {
         taskForm.addEventListener('submit', function(e) {
-            // Sync Quill to hidden input
             const hiddenInput = document.getElementById('task-content-hidden');
             if (window.taskQuill && hiddenInput) {
                 hiddenInput.value = window.taskQuill.root.innerHTML;
             }
 
-            // 1. HANDLE EDITING
             if (isEditing) {
                 e.preventDefault();
-                
                 if (submitBtn) {
                     submitBtn.textContent = 'Saving...';
                     submitBtn.disabled = true;
@@ -411,12 +406,10 @@
                     }
                     alert('Failed to update task. Please try again.');
                 });
-                return; // Stop here, don't run the creation logic
+                return;
             }
 
-            // 2. HANDLE CREATION (Existing Logic)
             e.preventDefault();
-            
             if (submitBtn) {
                 submitBtn.textContent = 'Submitting...';
                 submitBtn.disabled = true;
@@ -445,7 +438,7 @@
                         <div class="task-content">
                             <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
                             <div class="task-details">
-                                <span class="task-text" style="white-space: pre-wrap;" data-raw-content="${data.raw_content | e}">${data.content}</span>
+                                <span class="task-text" style="white-space: pre-wrap;" data-raw-content="${(data.raw_content || '').replace(/"/g, '&quot;')}">${data.content}</span>
                                 ${data.due_date ? `<span class="task-due-date">${data.due_date}</span>` : ''}
                             </div>
                         </div>
@@ -535,7 +528,7 @@
         }
     });
 
-    // --- CLEAR COMPLETED LOGIC (with Inline Confirmation) ---
+    // --- CLEAR COMPLETED LOGIC ---
     const clearBtn = document.getElementById('clear-completed-btn');
     let isConfirming = false;
     let confirmTimeout;
@@ -583,11 +576,12 @@
             taskModal.classList.remove('active');
             if (taskForm) {
                 taskForm.reset();
-                if (window.taskQuill) window.taskQuill.setText(''); // Clear Quill
-                document.getElementById('modal-title').innerText = 'New Task';
+                if (window.taskQuill) window.taskQuill.setText(''); 
+                const titleEl = document.getElementById('modal-title');
+                if (titleEl) titleEl.innerText = 'New Task';
                 isEditing = false;
                 editingId = null;
-                originalTaskText = ''; // Reset tracker
+                originalTaskText = ''; // Reset baseline
             }
             if (submitBtn) {
                 submitBtn.textContent = 'Submit Task';
@@ -598,9 +592,17 @@
         // Helper function to check if Quill text actually changed
         const hasUnsavedTaskChanges = () => {
             if (!window.taskQuill) return false;
-            // Get raw text (ignores HTML tags) and compare to original
+            
+            // Get current text and trim it to ignore invisible trailing newlines
             const currentText = window.taskQuill.getText().trim();
-            return currentText !== originalTaskText.trim();
+            
+            // If it's a new task, any text is a change
+            if (originalTaskText === '') {
+                return currentText !== '';
+            }
+            
+            // If editing, check if it differs from the normalized baseline we captured
+            return currentText !== originalTaskText;
         };
 
         taskModal.addEventListener('click', function(e) {
@@ -627,7 +629,6 @@
             }
         });
     }
-
 </script>
 
 {% endblock %}

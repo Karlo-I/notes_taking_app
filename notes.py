@@ -105,13 +105,12 @@ def index():
         clean_content = '\n'.join(cleaned_lines).strip()
         # ---------------------------------
 
-        # --- DEFINITIVE PREVIEW LOGIC (Matches the 3-line CSS clamp) ---
+        # --- CLEAN PREVIEW LOGIC (No annoying dots) ---
         # 1. Replace non-breaking spaces with regular spaces
         card_preview = clean_content.replace('&nbsp;', ' ')
         
-        # 2. Replace newlines with a bullet separator to keep it readable but flat
-        # This turns multi-line text into a neat summary: "Title • Bullet 1 • Bullet 2"
-        card_preview = card_preview.replace('\n', ' • ')
+        # 2. Replace newlines with a simple space (Removed the bullet separator)
+        card_preview = card_preview.replace('\n', ' ')
         
         # 3. Collapse multiple spaces into one
         card_preview = re.sub(r'\s+', ' ', card_preview).strip()
@@ -119,7 +118,7 @@ def index():
         # 4. Hard limit for the preview to ensure it never breaks the 3-line clamp
         if len(card_preview) > 150:
             card_preview = card_preview[:147] + "..."
-        # ----------------------------------------------------------------
+        # ------------------------------------------------
 
         notes.append({
             "id": row[0],
