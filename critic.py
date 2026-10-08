@@ -4,6 +4,7 @@ Now returns a dict with the reply text AND the token usage.
 """
 
 import os
+import re
 from anthropic import Anthropic
 
 _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -52,14 +53,26 @@ def build_system_prompt(note_type: str, turn_number: int, turn_cap: int) -> str:
         parts.append('This is the final turn. State your strongest remaining objection plainly, then explicitly hand control back to the user. Do not continue arguing past this turn.')
     return "\n\n".join(parts)
 
+def _strip_html(text: str) -> str:
+    """Removes HTML tags to save tokens and prevent AI confusion."""
+    if not text: return ""
+    return re.sub(r'<[^>]+>', '', text).strip()
+
 def get_critic_reply(note_type, note_content, transcript, turn_number, turn_cap, related_notes=None):
     system = build_system_prompt(note_type, turn_number, turn_cap)
     user_content_parts = []
+    
+    # Strip HTML from related notes before truncating and sending
     if related_notes:
-        truncated = [_truncate_text(n) for n in related_notes]
+        # Strip HTML first, then truncate the clean text
+        clean_related = [_strip_html(n) for n in related_notes]
+        truncated = [_truncate_text(n) for n in clean_related]
         joined = "\n".join(f"- {n}" for n in truncated)
         user_content_parts.append(f"<existing_notes>\n{joined}\n</existing_notes>")
-    user_content_parts.append(f"<note_to_review>\n{note_content}\n</note_to_review>")
+        
+    # Strip HTML from the main note being reviewed
+    clean_note_content = _strip_html(note_content)
+    user_content_parts.append(f"<note_to_review>\n{clean_note_content}\n</note_to_review>")
 
     messages = [{"role": "user", "content": "\n\n".join(user_content_parts)}]
     messages.extend(transcript)

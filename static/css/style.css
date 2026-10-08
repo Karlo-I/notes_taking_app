@@ -414,6 +414,19 @@ input[type="text"]:focus, textarea:focus, select:focus, .form-control:focus {
 .modal-note-content { white-space: pre-wrap; font-size: 15px; line-height: 1.6; }
 .modal-output-content { white-space: pre-line; font-family: Georgia, serif; line-height: 1.6; }
 
+/* Fix massive gaps in Note Modal caused by Quill's empty paragraphs */
+.modal-note-content p {
+    margin-top: 0;
+    margin-bottom: 8px; /* Tighter spacing */
+    line-height: 1.5;
+}
+
+/* Specifically target Quill's empty line breaks to remove huge gaps */
+.modal-note-content p:has(> br:only-child) {
+    margin-bottom: 0;
+    line-height: 0.5;
+}
+
 /* ====================================================================
    6. SPECIFIC PAGES (Review, Login, Dashboard)
    ==================================================================== */
@@ -897,30 +910,50 @@ select.form-control {
 }
 
 /* ==================================================================== 
-   10. VOICE INPUT MODAL (UPDATED WITH FAUX INNER METHOD)
+   NEW TASK MOBILE RESPONSIVENESS (iPhone SE and smaller)
+   ==================================================================== */
+   @media (max-width: 480px) {
+    
+    /* 1. Make the Modal fit the small screen better */
+    .modal-content {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 10px auto !important;
+    }
+
+    /* 2. Force Quill Toolbar into a single, swipeable row */
+    .ql-toolbar.ql-snow {
+        display: flex !important;
+        flex-wrap: nowrap !important; /* Forces single row */
+        overflow-x: auto !important;  /* Allows horizontal scrolling */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        padding: 8px !important;
+    }
+
+    /* 3. Hide the scrollbar for a clean, native-app feel */
+    .ql-toolbar.ql-snow::-webkit-scrollbar { display: none; }
+    .ql-toolbar.ql-snow { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* 4. Prevent buttons from squishing together */
+    .ql-toolbar.ql-snow .ql-formats {
+        flex-shrink: 0 !important; /* Keeps buttons their normal size */
+        margin-right: 12px !important;
+    }
+}
+
+/* ==================================================================== 
+   VOICE INPUT MODAL
    ==================================================================== */
 
-/* 1. The Wrapper: Acts as the visual box and creates the safe zone */
-.textarea-wrapper {
+   .textarea-wrapper {
     border: 1px solid var(--border-color) !important;
     border-radius: 6px !important;
     background: var(--bg-card) !important; 
     padding: 10px !important; 
-    padding-bottom: 42px !important; /* THE SAFE ZONE: Keeps text above controls */
+    padding-bottom: 42px !important; 
     position: relative;
 }
 
-/* 2. The Textarea: Blends into the wrapper, preventing text from hiding */
-#note-content-textarea, #output-content-textarea {
-    border: none !important; 
-    width: 100% !important;
-    box-sizing: border-box !important;
-    background: transparent !important; 
-    padding-bottom: 0 !important; /* Reset previous padding attempts */
-    resize: vertical; 
-}
-
-/* 3. Mic Button Styling (Preserving your tweaks) */
 .mic-btn {
     position: absolute;
     bottom: 6px;
@@ -935,7 +968,7 @@ select.form-control {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10; /* Increased to sit safely above textarea */
+    z-index: 10;
 }
 
 .mic-btn:hover {
@@ -945,8 +978,14 @@ select.form-control {
 
 /* Listening State: Red and Pulsing */
 .mic-btn.is-listening {
-    color: var(--danger);
+    color: var(--danger, #f85149) !important; /* Fallback to hex if var is missing */
     animation: mic-pulse 1.5s infinite;
+}
+
+/* Ensure the SVG icon inside the button also turns red */
+.mic-btn.is-listening svg {
+    color: var(--danger, #f85149) !important;
+    stroke: currentColor !important;
 }
 
 @keyframes mic-pulse {
@@ -955,7 +994,6 @@ select.form-control {
     100% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
 }
 
-/* 4. Tip Text Styling */
 .voice-tip {
     position: absolute;
     bottom: 6px;
@@ -975,7 +1013,6 @@ select.form-control {
     opacity: 1;
 }
 
-/* 5. Language Dropdown (Preserving your exact tweaks) */
 .voice-lang-select {
     position: absolute;
     bottom: 10px; 
@@ -991,26 +1028,19 @@ select.form-control {
     cursor: pointer;
     outline: none;
     z-index: 10;
-    
-    /* Remove default browser styling */
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    
-    /* Custom arrow */
     background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%238b949e%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
     background-repeat: no-repeat;
     background-position: right 8px center;
     background-size: 10px;
-    
-    /* CRITICAL FIXES (Your tweaks) */
     width: 80px; 
     max-width: 80px;
     text-overflow: ellipsis;
     transition: border-color 0.2s ease;
 }
 
-/* Fix the dropdown options list width */
 .voice-lang-select option {
     background: var(--bg-card);
     color: var(--text-primary);
@@ -1025,8 +1055,120 @@ select.form-control {
     border-color: var(--primary);
 }
 
+/* ==================================================================== 
+   11. QUILL RICH TEXT EDITOR (Dark Theme Customization)
+   ==================================================================== */
+
+/* 1. Main Editor Container */
+#note-content-editor, #review-editor, #task-content-editor {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 0 0 6px 6px !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    color: var(--text-primary) !important;
+    min-height: 120px;
+}
+
+/* 2. Editor Content Area */
+.ql-editor {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    padding: 12px !important;
+    min-height: 120px;
+}
+
+.ql-editor:focus {
+    border: none !important;
+    outline: none !important;
+}
+
+/* 3. Placeholder Text */
+.ql-editor.ql-blank::before {
+    color: var(--text-secondary) !important;
+    font-style: italic;
+    opacity: 0.7;
+    left: 12px !important; /* Align with padding */
+    font-size: 13px !important;
+}
+
+/* 4. Toolbar Styling */
+.ql-toolbar.ql-snow {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid var(--border-color) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    border-radius: 6px 6px 0 0 !important;
+    padding: 8px !important;
+}
+
+/* 5. Toolbar Buttons */
+.ql-toolbar.ql-snow .ql-stroke {
+    stroke: var(--text-secondary) !important;
+}
+
+.ql-toolbar.ql-snow .ql-fill {
+    fill: var(--text-secondary) !important;
+}
+
+.ql-toolbar.ql-snow button {
+    padding: 4px !important;
+    margin: 0 2px !important;
+}
+
+.ql-toolbar.ql-snow button:hover .ql-stroke,
+.ql-toolbar.ql-snow button:focus .ql-stroke {
+    stroke: var(--primary) !important;
+}
+
+.ql-toolbar.ql-snow button:hover .ql-fill,
+.ql-toolbar.ql-snow button:focus .ql-fill {
+    fill: var(--primary) !important;
+}
+
+/* 6. Active Toolbar Buttons */
+.ql-toolbar.ql-snow button.ql-active .ql-stroke,
+.ql-toolbar.ql-snow .ql-picker.ql-active .ql-picker-label {
+    stroke: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+/* 7. Toolbar Picker Labels */
+.ql-toolbar.ql-snow .ql-picker-label {
+    color: var(--text-secondary) !important;
+}
+
+.ql-toolbar.ql-snow .ql-picker-label:hover {
+    color: var(--text-bright) !important;
+}
+
+/* 8. Dropdown Menus */
+.ql-toolbar.ql-snow .ql-picker-options {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px !important;
+    padding: 4px !important;
+}
+
+.ql-toolbar.ql-snow .ql-picker-options .ql-picker-item {
+    color: var(--text-primary) !important;
+}
+
+.ql-toolbar.ql-snow .ql-picker-options .ql-picker-item:hover {
+    background: rgba(88, 166, 255, 0.1) !important;
+    color: var(--text-bright) !important;
+}
+
+/* 9. Remove default Quill border on focus */
+.ql-container.ql-snow:focus-within {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1) !important;
+}
+
 /* ====================================================================
-   11. ACCESSIBILITY & REDUCED MOTION
+   12. ACCESSIBILITY & REDUCED MOTION
    ==================================================================== */c
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -1038,7 +1180,7 @@ select.form-control {
 }
 
 /* ====================================================================
-   12. UNDO TOAST NOTIFICATION
+   13. UNDO TOAST NOTIFICATION
    ==================================================================== */
    .undo-toast {
     position: fixed;

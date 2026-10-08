@@ -141,7 +141,26 @@
         </div>
         <form id="new-task-form">
             <div class="modal-body">
-                <textarea name="content" class="form-control" placeholder="Write your task..." rows="4" required style="margin-bottom: 16px;"></textarea>
+                <!-- Wrapper for Editor and Mic (Uses existing CSS) -->
+                <div class="textarea-wrapper">
+                    <div id="task-content-editor" style="height: 120px;"></div>
+                    <input type="hidden" name="content" id="task-content-hidden">
+                    
+                    <div id="task-voice-tip" class="voice-tip">Tip: Say "comma" or "period" to punctuate</div>
+                    
+                    <select id="task-voice-lang" class="voice-lang-select">
+                        <option value="en">English</option>
+                        <option value="zh">Mandarin</option>
+                        <option value="es">Spanish</option>
+                        <option value="de">German</option>
+                        <option value="tl">Tagalog</option>
+                    </select>
+    
+                    <button type="button" id="task-mic-btn" class="mic-btn" aria-label="Voice input">
+                        <i data-lucide="mic"></i>
+                    </button>
+                </div>
+    
                 <div style="margin-top: 15px;">
                     <label for="due_date" style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Due Date (Optional)</label>
                     <input type="date" name="due_date" id="due_date" class="form-control">
@@ -161,6 +180,121 @@
 </div>
 
 <script>
+    // --- INITIALIZE TASK QUILL EDITOR ---
+    window.taskQuill = new Quill('#task-content-editor', {
+        theme: 'snow',
+        placeholder: 'Describe your task...'
+    });
+
+    // Track the original text to prevent accidental closures
+    let originalTaskText = ''; 
+
+    // --- TASK VOICE INPUT (Isolated from Notes Mic) ---
+    const taskMicBtn = document.getElementById('task-mic-btn');
+    const taskTipText = document.getElementById('task-voice-tip');
+    let taskIsRecording = false;
+    let taskMediaRecorder = null;
+    let taskAudioChunks = [];
+
+    function setTaskUIState(state, message) {
+        if (state === 'loading') {
+            taskMicBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i>'; 
+            taskMicBtn.classList.add('is-listening');
+        } else if (state === 'recording') {
+            taskMicBtn.innerHTML = '<i data-lucide="mic-off"></i>'; 
+            taskMicBtn.classList.add('is-listening');
+        } else if (state === 'transcribing') {
+            taskMicBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i>';
+            taskMicBtn.classList.add('is-listening');
+        } else {
+            taskMicBtn.innerHTML = '<i data-lucide="mic"></i>';
+            taskMicBtn.classList.remove('is-listening');
+        }
+        if (message) {
+            taskTipText.innerText = message;
+            taskTipText.classList.add('is-visible');
+        } else {
+            taskTipText.classList.remove('is-visible');
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    taskMicBtn.onclick = async function() {
+        // Reuse the global transcriber from base.html if it exists
+        if (!window.globalTranscriber) {
+            setTaskUIState('loading', "Loading privacy model (~75MB)... Please wait.");
+            if (window.taskQuill) window.taskQuill.enable(false);
+
+            try {
+                const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1');
+                env.allowLocalModels = false;
+                env.remoteHost = 'https://huggingface.co/';
+                env.remotePathTemplate = '{model}/resolve/{revision}/';
+                window.globalTranscriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+            } catch (e) {
+                console.error("Model load failed", e);
+                alert("Failed to load privacy model.");
+                setTaskUIState('idle', null);
+                if (window.taskQuill) window.taskQuill.enable(true);
+                return;
+            }
+        }
+
+        if (!taskIsRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                taskMediaRecorder = new MediaRecorder(stream);
+                taskAudioChunks = [];
+
+                taskMediaRecorder.ondataavailable = (event) => taskAudioChunks.push(event.data);
+
+                taskMediaRecorder.onstop = async () => {
+                    setTaskUIState('transcribing', "Transcribing locally...");
+                    const audioBlob = new Blob(taskAudioChunks, { type: taskMediaRecorder.mimeType || 'audio/webm' });
+
+                    try {
+                        const langSelect = document.getElementById('task-voice-lang');
+                        const selectedLang = langSelect ? langSelect.value : 'en';
+                        
+                        // Reuse decodeAudioForWhisper from base.html
+                        const audioData = await decodeAudioForWhisper(audioBlob);
+                        const result = await window.globalTranscriber(audioData, { 
+                            language: selectedLang, task: 'transcribe', chunk_length_s: 30, stride_length_s: 5 
+                        });
+                        
+                        if (result && result.text) {
+                            if (window.taskQuill) {
+                                const length = window.taskQuill.getLength();
+                                window.taskQuill.insertText(length, (length > 0 ? ' ' : '') + result.text.trim());
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Transcription error", err);
+                        alert("Transcription failed: " + err.message);
+                    } finally {
+                        setTaskUIState('idle', null);
+                        if (window.taskQuill) window.taskQuill.enable(true);
+                    }
+                };  
+
+                taskMediaRecorder.start();
+                taskIsRecording = true;
+                setTaskUIState('recording', "Recording... Click mic to stop.");
+                if (window.taskQuill) window.taskQuill.enable(false);
+
+            } catch (err) {
+                console.error("Mic access denied", err);
+                alert("Microphone access is required.");
+                setTaskUIState('idle', null);
+                if (window.taskQuill) window.taskQuill.enable(true);
+            }
+        } else {
+            taskMediaRecorder.stop();
+            taskIsRecording = false;
+            taskMediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
+    };
+
     // --- MODAL LOGIC (Specific to To-Dos) ---
     const modal = document.getElementById('new-task-modal');
     const openBtn = document.getElementById('open-task-modal-btn');
@@ -175,7 +309,7 @@
     let originalTaskContent = ''; // Tracks the text when the modal first opened
 
     function openModal() { 
-        originalTaskContent = ''; // <--- It's a new task, so original is empty
+        originalTaskText = ''; // It's a new task, so original is empty
         if (modal) modal.classList.add('active'); 
     }
     
@@ -183,6 +317,7 @@
         if (modal) modal.classList.remove('active');
         if (taskForm) {
             taskForm.reset();
+            if (window.taskQuill) window.taskQuill.setText('');
             document.getElementById('modal-title').innerText = 'New Task'; // Reset title
             isEditing = false; // Reset edit flag
             editingId = null;  // Reset ID
@@ -220,7 +355,10 @@
         }
 
         // Populate the modal
-        document.querySelector('#new-task-modal textarea[name="content"]').value = content;
+        if (window.taskQuill) {
+            window.taskQuill.root.innerHTML = content;
+            originalTaskText = window.taskQuill.getText()
+        }
         document.querySelector('#new-task-modal select[name="status"]').value = status;
         document.querySelector('#new-task-modal input[name="due_date"]').value = dueDateVal;
 
@@ -236,6 +374,12 @@
     // --- SEAMLESS TASK CREATION & EDITING ---
     if (taskForm) {
         taskForm.addEventListener('submit', function(e) {
+            // Sync Quill to hidden input
+            const hiddenInput = document.getElementById('task-content-hidden');
+            if (window.taskQuill && hiddenInput) {
+                hiddenInput.value = window.taskQuill.root.innerHTML;
+            }
+
             // 1. HANDLE EDITING
             if (isEditing) {
                 e.preventDefault();
@@ -432,13 +576,13 @@
     if (taskModal) {
         const closeTaskModal = () => {
             taskModal.classList.remove('active');
-            // Ensure edit state is reset if closed via outside click/escape
             if (taskForm) {
                 taskForm.reset();
+                if (window.taskQuill) window.taskQuill.setText(''); // Clear Quill
                 document.getElementById('modal-title').innerText = 'New Task';
                 isEditing = false;
                 editingId = null;
-                originalTaskContent = ''; // Reset the tracker
+                originalTaskText = ''; // Reset tracker
             }
             if (submitBtn) {
                 submitBtn.textContent = 'Submit Task';
@@ -446,17 +590,17 @@
             }
         };
 
-        // Helper function to check if text actually changed
-        const hasUnsavedChanges = () => {
-            const textarea = taskModal.querySelector('textarea');
-            if (!textarea) return false;
-            // Compare current text to the text when the modal opened
-            return textarea.value.trim() !== originalTaskContent.trim();
+        // Helper function to check if Quill text actually changed
+        const hasUnsavedTaskChanges = () => {
+            if (!window.taskQuill) return false;
+            // Get raw text (ignores HTML tags) and compare to original
+            const currentText = window.taskQuill.getText().trim();
+            return currentText !== originalTaskText.trim();
         };
 
         taskModal.addEventListener('click', function(e) {
             if (e.target === this) {
-                if (hasUnsavedChanges()) {
+                if (hasUnsavedTaskChanges()) {
                     if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
                         closeTaskModal();
                     }
@@ -468,7 +612,7 @@
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && taskModal.classList.contains('active')) {
-                if (hasUnsavedChanges()) {
+                if (hasUnsavedTaskChanges()) {
                     if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
                         closeTaskModal();
                     }

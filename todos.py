@@ -3,6 +3,7 @@ To-Do List Module -- Create, read, update, delete, and reorder tasks.
 Now uses Fractional Indexing for O(1) database updates.
 """
 
+import re
 from db import get_user_scoped_connection
 from decorators import require_login
 from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
@@ -29,9 +30,18 @@ def index():
     for row in rows:
         status = row[2]
         if status in todos:
+            # Strip HTML tags from content for clean card display
+            raw_content = row[1] if row[1] else ""
+            # Replace block-level tags with spaces first
+            spaced_content = re.sub(r'</?(?:p|li|div|br|h[1-6]|ul|ol|blockquote)[^>]*>', ' ', raw_content)
+            # Strip remaining inline tags
+            clean_content = re.sub(r'<[^>]+>', '', spaced_content)
+            # Collapse multiple spaces
+            clean_content = re.sub(r'\s+', ' ', clean_content).strip()
+            
             todos[status].append({
                 "id": str(row[0]),
-                "content": row[1],
+                "content": clean_content,  # Use cleaned content
                 "order_index": row[3],
                 "created_at": row[4].strftime('%d/%m/%Y %H:%M') if row[4] else '',
                 "due_date": row[5].strftime('%d/%m/%Y') if row[5] else None

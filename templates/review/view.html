@@ -12,10 +12,12 @@
                 <span class="badge">{{ note[1].upper() }}</span>
                 <span class="meta">Classified as: {{ note[1] }}</span>
             </div>
-            <textarea id="note-content" 
-                disabled
-                class="review-note-textarea"
-            >{{ note[2] }}</textarea>
+            
+            <!-- 1. The Quill Editor Container -->
+            <div id="review-editor" style="height: 200px; background-color: var(--bg-card); color: var(--text-primary);"></div>
+
+            <!-- 2. Hidden input to hold the HTML for the save function -->
+            <input type="hidden" id="note-content" value="{{ note[2] }}">
             
             <div class="review-actions">
                 <!-- Edit Button -->
@@ -73,23 +75,39 @@
     </div>
     
     <script>
+        // 1. Initialize Quill on the Review Page
+        // Load the content from the hidden input created above
+        const initialContent = document.getElementById('note-content').value;
+        
+        const reviewQuill = new Quill('#review-editor', {
+            theme: 'snow',
+            placeholder: 'Write your note...'
+        });
+        
+        // Set the initial content (Quill expects HTML)
+        reviewQuill.root.innerHTML = initialContent;
+
         function editNote() {
-            const textarea = document.getElementById('note-content');
-            textarea.disabled = false;
-            textarea.style.backgroundColor = '#161b22';
-            textarea.style.color = '#f0f6fc';
-            textarea.style.borderColor = '#58a6ff';
-            textarea.focus();
+            // Enable editing in Quill
+            reviewQuill.enable(true);
+            document.getElementById('review-editor').style.backgroundColor = '#161b22';
+            document.getElementById('review-editor').style.borderColor = '#58a6ff';
         }
         
+        // Disable editing by default until "Edit" is clicked
+        reviewQuill.enable(false);
+
         async function saveNote(noteId, btn) {
+            // 2. Sync Quill content to the hidden input before saving
+            document.getElementById('note-content').value = reviewQuill.root.innerHTML;
+            
             const content = document.getElementById('note-content').value;
             const formData = new FormData();
             formData.append('content', content);
             
-            // 1. LOADING STATE: Dim the icon and disable it
+            const originalText = btn.innerText;
+            btn.innerText = 'Saving...';
             btn.disabled = true;
-            btn.style.opacity = '0.5';
             
             try {
                 const res = await fetch(`/notes/${noteId}/review/approve`, { method: 'POST', body: formData });
@@ -97,14 +115,26 @@
                     window.location.href = '/notes';
                 } else {
                     alert('Error saving note');
-                    // 2. Revert on error
+                    btn.innerText = originalText;
                     btn.disabled = false;
-                    btn.style.opacity = '1';
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
+                btn.innerText = originalText;
                 btn.disabled = false;
-                btn.style.opacity = '1';
+            }
+        }
+        
+        function cancelReview(noteId, btn) {
+            if (confirm('Are you sure you want to delete this note?')) {
+                btn.innerText = 'Deleting...';
+                btn.disabled = true;
+                
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = `/notes/${noteId}/delete`;
+                document.body.appendChild(form);
+                form.submit();
             }
         }
         
@@ -118,7 +148,6 @@
             const formData = new FormData();
             formData.append('reply', message);
             
-            // 1. LOADING STATE: Dim the icon and disable it
             btn.disabled = true;
             btn.style.opacity = '0.5';
             
@@ -128,7 +157,6 @@
                     window.location.reload();
                 } else {
                     alert('Error sending reply');
-                    // 2. Revert on error
                     btn.disabled = false;
                     btn.style.opacity = '1';
                 }
@@ -138,7 +166,6 @@
                 btn.style.opacity = '1';
             }
         }
-
     </script>
 
 {% endblock %}

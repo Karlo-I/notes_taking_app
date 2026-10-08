@@ -5,6 +5,7 @@ Now includes token usage in the returned dict.
 
 import json
 import os
+import re
 from anthropic import Anthropic
 
 _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -42,12 +43,26 @@ def _strip_code_fences(text):
             text = text.rstrip()[:-3]
     return text.strip()
 
+def _strip_html(text: str) -> str:
+    if not text: return ""
+    return re.sub(r'<[^>]+>', '', text).strip()
+
 def decide(note_content, candidates):
     if not candidates:
         return {"decision": "new", "target_note_id": None, "merged_content": None, "input_tokens": 0, "output_tokens": 0}
 
-    candidate_text = "\n\n".join(f'<candidate id="{c["id"]}">\n{c["content"]}\n</candidate>' for c in candidates)
-    message = f"<new_note>\n{note_content}\n</new_note>\n\n<candidates>\n{candidate_text}\n</candidates>"
+    # Strip HTML from candidates before building the prompt
+    clean_candidates = []
+    for c in candidates:
+        clean_c = c.copy()
+        clean_c["content"] = _strip_html(c["content"])
+        clean_candidates.append(clean_c)
+
+    candidate_text = "\n\n".join(f'<candidate id="{c["id"]}">\n{c["content"]}\n</candidate>' for c in clean_candidates)
+    
+    # Strip HTML from the new note
+    clean_note = _strip_html(note_content)
+    message = f"<new_note>\n{clean_note}\n</new_note>\n\n<candidates>\n{candidate_text}\n</candidates>"
 
     response = _client.messages.create(
         model=_MODEL,

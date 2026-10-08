@@ -11,6 +11,7 @@ between Haiku and Sonnet/Opus without touching code.
 
 import anthropic
 import os
+import re
 from db import get_user_scoped_connection
 from retrieval import find_relevant_notes
 
@@ -60,6 +61,10 @@ RULES:
 - Length: aim for 300-600 words unless the source material warrants significantly more or less.""",
 }
 
+def _strip_html(text: str) -> str:
+    if not text: return ""
+    return re.sub(r'<[^>]+>', '', text).strip()
+
 def generate_output(user_id: str, topic_query: str, output_type: str, is_regeneration: bool = False) -> dict:
     """
     Full generation pipeline:
@@ -86,7 +91,9 @@ def generate_output(user_id: str, topic_query: str, output_type: str, is_regener
     # Step 2: build context
     context_lines = []
     for n in relevant_notes:
-        context_lines.append(f"[Note {n['id']}] ({n['note_type']}): {n['content']}")
+        # Strip HTML here so the Output LLM only sees plain text
+        clean_content = _strip_html(n['content'])
+        context_lines.append(f"[Note {n['id']}] ({n['note_type']}): {clean_content}")
     context_block = "\n\n".join(context_lines)
 
     system_prompt = SYSTEM_PROMPTS[output_type]

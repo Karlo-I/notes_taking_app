@@ -32,9 +32,24 @@ def index():
                 "SELECT id, note_type, content, status, created_at "
                 "FROM notes ORDER BY created_at DESC"
             )
-            notes = cur.fetchall()
+            raw_notes = cur.fetchall()
 
-    # Pass the raw data to the template. Jinja2 will handle the HTML.
+    notes = []
+    for row in raw_notes:
+        raw_html = row[2] if row[2] else ""
+        
+        # 1. Replace block-level tags (p, li, div, br, etc.) with a space
+        spaced_html = re.sub(r'</?(?:p|li|div|br|h[1-6]|ul|ol|blockquote)[^>]*>', ' ', raw_html)
+        
+        # 2. Strip any remaining inline tags (like <strong>, <em>)
+        clean_content = re.sub(r'<[^>]+>', '', spaced_html)
+        
+        # 3. Collapse multiple spaces into a single space and trim
+        clean_content = re.sub(r'\s+', ' ', clean_content).strip()
+        
+        # Keep the exact same tuple structure for your template
+        notes.append((row[0], row[1], clean_content, row[3], row[4]))
+
     return render_template("notes/index.html", notes=notes)
 
 
