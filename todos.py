@@ -32,16 +32,94 @@ def index():
         if status in todos:
             # Strip HTML tags from content for clean card display
             raw_content = row[1] if row[1] else ""
-            # Replace block-level tags with spaces first
-            spaced_content = re.sub(r'</?(?:p|li|div|br|h[1-6]|ul|ol|blockquote)[^>]*>', ' ', raw_content)
-            # Strip remaining inline tags
-            clean_content = re.sub(r'<[^>]+>', '', spaced_content)
-            # Collapse multiple spaces
-            clean_content = re.sub(r'\s+', ' ', clean_content).strip()
+            text = raw_content
+
+            # --- STEP 0: Fix Tab Characters ---
+            text = text.replace('\t', '&nbsp;&nbsp;')
+            # ----------------------------------
+
+            # 1. Capture the "Empty Paragraph" (User hitting Enter twice) FIRST
+            text = re.sub(r'<p>\s*<br\s*/?>\s*</p>', '\n\n', text)
+
+            # Shared helper to detect indentation level from HTML tags
+            def get_indent(tag):
+                tag = tag.lower()
+                if 'ql-indent-2' in tag or 'indent-2' in tag: return '&nbsp;&nbsp;&nbsp;&nbsp;'
+                if 'ql-indent-1' in tag or 'indent-1' in tag: return '&nbsp;&nbsp;'
+                if 'margin-left' in tag or 'padding-left' in tag: return '&nbsp;&nbsp;'
+                return ''
+
+            # 2. Handle ORDERED Lists (<ol>) - Generates 1., 2., 3.
+            def process_ordered_list(match):
+                ol_content = match.group(1)
+                count = 1
+                
+                def replace_li_with_num(li_match):
+                    nonlocal count
+                    tag = li_match.group(0).lower()
+                    indent = get_indent(tag)
+                    if not indent: indent = '&nbsp;&nbsp;'
+                    
+                    result = f"{indent}{count}. "
+                    count += 1
+                    return result
+                
+                processed = re.sub(r'<li[^>]*>', replace_li_with_num, ol_content)
+                processed = re.sub(r'</li>', '\n', processed)
+                return processed
+
+            text = re.sub(r'<ol[^>]*>(.*?)</ol>', process_ordered_list, text, flags=re.DOTALL)
+
+            # 3. Handle UNORDERED Lists (<ul>) - Generates Bullets
+            def process_unordered_list(match):
+                ul_content = match.group(1)
+                
+                def replace_li_with_bullet(li_match):
+                    tag = li_match.group(0).lower()
+                    indent = get_indent(tag)
+                    if not indent: return '&nbsp;&nbsp;• '
+                    return f'{indent}• '
+                
+                processed = re.sub(r'<li[^>]*>', replace_li_with_bullet, ul_content)
+                processed = re.sub(r'</li>', '\n', processed)
+                return processed
+
+            text = re.sub(r'<ul[^>]*>(.*?)</ul>', process_unordered_list, text, flags=re.DOTALL)
+
+            # 4. FALLBACK: Catch any stray <li> tags that weren't inside <ol> or <ul>
+            # This prevents the browser from adding default bullets if regex fails
+            text = re.sub(r'<li[^>]*>', '&nbsp;&nbsp;• ', text)
+            text = re.sub(r'</li>', '\n', text)
+            text = re.sub(r'</?(?:ol|ul)[^>]*>', '', text) # Remove any remaining list tags
+
+            # 5. Handle Paragraphs and their Indentation
+            def replace_p(match):
+                return get_indent(match.group(0))
+
+            text = re.sub(r'<p[^>]*>', replace_p, text)
+            text = re.sub(r'</p>', '\n', text)
+
+            # 6. Handle <br>
+            text = re.sub(r'<br\s*/?>', '\n', text)
+
+            # 7. Strip any other remaining HTML tags
+            text = re.sub(r'<[^>]+>', '', text)
+
+            # 8. Clean up whitespace
+            text = re.sub(r'\n{3,}', '\n\n', text)
+
+            # Split into lines
+            lines = text.split('\n')
+            cleaned_lines = [line.rstrip() for line in lines]
+            text = '\n'.join(cleaned_lines)
+
+            # Final trim
+            clean_content = text.strip()
             
             todos[status].append({
                 "id": str(row[0]),
-                "content": clean_content,  # Use cleaned content
+                "content": clean_content,      # Clean text for the card
+                "raw_content": raw_content,    # RAW HTML for the edit modal
                 "order_index": row[3],
                 "created_at": row[4].strftime('%d/%m/%Y %H:%M') if row[4] else '',
                 "due_date": row[5].strftime('%d/%m/%Y') if row[5] else None
