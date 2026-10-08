@@ -105,22 +105,26 @@ def index():
         clean_content = '\n'.join(cleaned_lines).strip()
         # ---------------------------------
 
-        # --- NEW: Create a "Structured" Preview for the Card ---
+        # --- DEFINITIVE PREVIEW LOGIC (Matches the 3-line CSS clamp) ---
         # 1. Replace non-breaking spaces with regular spaces
         card_preview = clean_content.replace('&nbsp;', ' ')
         
-        # 2. Split by newline, strip leading spaces (indentation) from each line
-        # This keeps the bullets/numbers on new lines, but aligns them flush-left
-        # so the card doesn't look "blown up" or messy.
-        lines = card_preview.split('\n')
-        clean_lines = [line.lstrip() for line in lines]
-        card_preview = '\n'.join(clean_lines)
-        # -------------------------------------------------------
+        # 2. Replace newlines with a bullet separator to keep it readable but flat
+        # This turns multi-line text into a neat summary: "Title • Bullet 1 • Bullet 2"
+        card_preview = card_preview.replace('\n', ' • ')
+        
+        # 3. Collapse multiple spaces into one
+        card_preview = re.sub(r'\s+', ' ', card_preview).strip()
+        
+        # 4. Hard limit for the preview to ensure it never breaks the 3-line clamp
+        if len(card_preview) > 150:
+            card_preview = card_preview[:147] + "..."
+        # ----------------------------------------------------------------
 
         notes.append({
             "id": row[0],
             "type": row[1],
-            "content": card_preview,     # Structured text for the card
+            "content": card_preview,     # Flat, clean summary for the card
             "raw_content": raw_content,  # Rich HTML for the modal
             "status": row[3],
             "created_at": row[4]
