@@ -325,6 +325,7 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     overflow: hidden;
     flex: 1; /* This tells the text area to grow and fill all empty spaces, effectively pushing the view button to the bottom of the card */
 }
+
 .notes-grid .card-actions, .outputs-grid .card-actions {
     margin-top: 4px;
 }

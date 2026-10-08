@@ -36,19 +36,99 @@ def index():
 
     notes = []
     for row in raw_notes:
-        raw_html = row[2] if row[2] else ""
+        raw_content = row[2] if row[2] else ""
+        text = raw_content
+
+        # --- EXACT LOGIC FROM TODOS.PY ---
+        # Step 0: Fix Tabs
+        text = text.replace('\t', '&nbsp;&nbsp;')
         
-        # 1. Replace block-level tags (p, li, div, br, etc.) with a space
-        spaced_html = re.sub(r'</?(?:p|li|div|br|h[1-6]|ul|ol|blockquote)[^>]*>', ' ', raw_html)
+        # Step 1: Empty Paragraphs
+        text = re.sub(r'<p>\s*<br\s*/?>\s*</p>', '\n\n', text)
+
+        # Helper for indentation
+        def get_indent(tag):
+            tag = tag.lower()
+            if 'ql-indent-2' in tag or 'indent-2' in tag: return '&nbsp;&nbsp;&nbsp;&nbsp;'
+            if 'ql-indent-1' in tag or 'indent-1' in tag: return '&nbsp;&nbsp;'
+            if 'margin-left' in tag or 'padding-left' in tag: return '&nbsp;&nbsp;'
+            return ''
+
+        # Step 2: Ordered Lists
+        def process_ordered_list(match):
+            ol_content = match.group(1)
+            count = 1
+            def replace_li_with_num(li_match):
+                nonlocal count
+                tag = li_match.group(0).lower()
+                indent = get_indent(tag)
+                if not indent: indent = '&nbsp;&nbsp;'
+                result = f"{indent}{count}. "
+                count += 1
+                return result
+            processed = re.sub(r'<li[^>]*>', replace_li_with_num, ol_content)
+            return re.sub(r'</li>', '\n', processed)
+        text = re.sub(r'<ol[^>]*>(.*?)</ol>', process_ordered_list, text, flags=re.DOTALL)
+
+        # Step 3: Unordered Lists
+        def process_unordered_list(match):
+            ul_content = match.group(1)
+            def replace_li_with_bullet(li_match):
+                tag = li_match.group(0).lower()
+                indent = get_indent(tag)
+                if not indent: return '&nbsp;&nbsp;• '
+                return f'{indent}• '
+            processed = re.sub(r'<li[^>]*>', replace_li_with_bullet, ul_content)
+            return re.sub(r'</li>', '\n', processed)
+        text = re.sub(r'<ul[^>]*>(.*?)</ul>', process_unordered_list, text, flags=re.DOTALL)
+
+        # Step 4: Fallback
+        text = re.sub(r'<li[^>]*>', '&nbsp;&nbsp;• ', text)
+        text = re.sub(r'</li>', '\n', text)
+        text = re.sub(r'</?(?:ol|ul)[^>]*>', '', text)
+
+        # Step 5: Paragraphs
+        def replace_p(match):
+            return get_indent(match.group(0))
+        text = re.sub(r'<p[^>]*>', replace_p, text)
+        text = re.sub(r'</p>', '\n', text)
+
+        # Step 6: <br> and remaining tags
+        text = re.sub(r'<br\s*/?>', '\n', text)
+        text = re.sub(r'<[^>]+>', '', text)
+
+        # Step 7: Cleanup (CRITICAL: Do NOT use \s+ here!)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        lines = text.split('\n')
+        # Use rstrip to keep leading indents, but clean trailing spaces
+        cleaned_lines = [line.rstrip() for line in lines]
+        clean_content = '\n'.join(cleaned_lines).strip()
+        # ---------------------------------
+
+        # --- DEFINITIVE PREVIEW LOGIC (Matches the 3-line CSS clamp) ---
+        # 1. Replace non-breaking spaces with regular spaces
+        card_preview = clean_content.replace('&nbsp;', ' ')
         
-        # 2. Strip any remaining inline tags (like <strong>, <em>)
-        clean_content = re.sub(r'<[^>]+>', '', spaced_html)
+        # 2. Replace newlines with a bullet separator to keep it readable but flat
+        # This turns multi-line text into a neat summary: "Title • Bullet 1 • Bullet 2"
+        card_preview = card_preview.replace('\n', ' • ')
         
-        # 3. Collapse multiple spaces into a single space and trim
-        clean_content = re.sub(r'\s+', ' ', clean_content).strip()
+        # 3. Collapse multiple spaces into one
+        card_preview = re.sub(r'\s+', ' ', card_preview).strip()
         
-        # Keep the exact same tuple structure for your template
-        notes.append((row[0], row[1], clean_content, row[3], row[4]))
+        # 4. Hard limit for the preview to ensure it never breaks the 3-line clamp
+        if len(card_preview) > 150:
+            card_preview = card_preview[:147] + "..."
+        # ----------------------------------------------------------------
+
+        notes.append({
+            "id": row[0],
+            "type": row[1],
+            "content": card_preview,     # Flat, clean summary for the card
+            "raw_content": raw_content,  # Rich HTML for the modal
+            "status": row[3],
+            "created_at": row[4]
+        })
 
     return render_template("notes/index.html", notes=notes)
 
@@ -256,11 +336,17 @@ def graph_view():
         base_color = "#58a6ff" if note_type == "claim" else "#d29922" if note_type == "reflection" else "#a371f7"
         size = 25 if str(note_id) in hub_notes else 10 
         
-        # --- TACTICAL TRUNCATION ---
-        # 1. Flatten all newlines/tabs into single spaces
-        clean_text = re.sub(r'\s+', ' ', content).strip()
+        # --- TACTICAL TRUNCATION FOR GRAPH TOOLTIP ---
+        # 1. Strip HTML tags first so the tooltip doesn't show raw code
+        clean_text = re.sub(r'<[^>]+>', '', content)
         
-        # 2. Cut at a clean word boundary around 90 characters
+        # 2. Replace non-breaking spaces with regular spaces
+        clean_text = clean_text.replace('&nbsp;', ' ')
+        
+        # 3. Flatten all newlines/tabs into single spaces
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        
+        # 4. Cut at a clean word boundary around 150 characters
         limit = 150
         if len(clean_text) > limit:
             truncated = clean_text[:limit]

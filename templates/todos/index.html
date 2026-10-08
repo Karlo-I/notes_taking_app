@@ -27,13 +27,14 @@
                 <div class="card">
                     <div class="task-content">
                         <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
-                        <span class="task-text">{{ item['content'] }}</span>
+                        <!-- Added data-raw-content and white-space style -->
+                        <span class="task-text" style="white-space: pre-wrap;" data-raw-content="{{ item['raw_content'] | e }}">{{ item['content'] | safe }}</span>
                         {% if item['due_date'] %}
                             <span class="task-due-date">{{ item['due_date'] }}</span>
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <!-- NEW: Edit Button -->
+                        <!-- Edit Button -->
                         <button type="button" class="icon-btn edit-btn" data-id="{{ item['id'] }}" aria-label="Edit task" title="Edit task">
                             <i data-lucide="pencil"></i>
                         </button>
@@ -64,13 +65,14 @@
                 <div class="card">
                     <div class="task-content">
                         <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
-                        <span class="task-text">{{ item['content'] }}</span>
+                        <!-- Added data-raw-content and white-space style -->
+                        <span class="task-text" style="white-space: pre-wrap;" data-raw-content="{{ item['raw_content'] | e }}">{{ item['content'] | safe }}</span>
                         {% if item['due_date'] %}
                             <span class="task-due-date">{{ item['due_date'] }}</span>
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <!-- NEW: Edit Button -->
+                        <!-- Edit Button -->
                         <button type="button" class="icon-btn edit-btn" data-id="{{ item['id'] }}" aria-label="Edit task" title="Edit task">
                             <i data-lucide="pencil"></i>
                         </button>
@@ -103,17 +105,18 @@
             {% endif %}
 
             {% for item in todos['complete'] %}
-            <li class="kanban-item is-complete" data-id="{{ item['id'] }}">
+            <li class="kanban-item" data-id="{{ item['id'] }}">
                 <div class="card">
                     <div class="task-content">
                         <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
-                        <span class="task-text">{{ item['content'] }}</span>
+                        <!-- Added data-raw-content and white-space style -->
+                        <span class="task-text" style="white-space: pre-wrap;" data-raw-content="{{ item['raw_content'] | e }}">{{ item['content'] | safe }}</span>
                         {% if item['due_date'] %}
                             <span class="task-due-date">{{ item['due_date'] }}</span>
                         {% endif %}
                     </div>
                     <div class="card-actions">
-                        <!-- NEW: Edit Button -->
+                        <!-- Edit Button -->
                         <button type="button" class="icon-btn edit-btn" data-id="{{ item['id'] }}" aria-label="Edit task" title="Edit task">
                             <i data-lucide="pencil"></i>
                         </button>
@@ -333,7 +336,7 @@
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
     if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-    // --- EDIT TASK LOGIC ---
+    // --- EDIT TASK LOGIC (UPDATED to use raw HTML) ---
     document.addEventListener('click', function(e) {
         const editBtn = e.target.closest('.edit-btn');
         if (!editBtn) return;
@@ -343,7 +346,9 @@
 
         // Extract current data from the card
         editingId = editBtn.dataset.id;
-        const content = item.querySelector('.task-text').innerText;
+        
+        // UPDATED: Get the RAW HTML from the data attribute instead of innerText
+        const rawContent = item.querySelector('.task-text').dataset.rawContent || '';
         const status = item.closest('.kanban-list').dataset.status;
         const dueDateText = item.querySelector('.task-due-date')?.innerText;
 
@@ -354,9 +359,9 @@
             if (parts.length === 3) dueDateVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
 
-        // Populate the modal
+        // Populate the modal with RAW HTML
         if (window.taskQuill) {
-            window.taskQuill.root.innerHTML = content;
+            window.taskQuill.root.innerHTML = rawContent; // Use raw HTML here!
             originalTaskText = window.taskQuill.getText()
         }
         document.querySelector('#new-task-modal select[name="status"]').value = status;
@@ -365,7 +370,7 @@
         // Change Modal Title and set state
         document.getElementById('modal-title').innerText = 'Edit Task';
         isEditing = true;
-        originalTaskContent = content;
+        originalTaskContent = rawContent;
 
         // Open the modal
         if (modal) modal.classList.add('active');
@@ -440,7 +445,7 @@
                         <div class="task-content">
                             <i data-lucide="grip-vertical" class="drag-handle" width="16" height="16"></i>
                             <div class="task-details">
-                                <span class="task-text">${data.content}</span>
+                                <span class="task-text" style="white-space: pre-wrap;" data-raw-content="${data.raw_content | e}">${data.content}</span>
                                 ${data.due_date ? `<span class="task-due-date">${data.due_date}</span>` : ''}
                             </div>
                         </div>

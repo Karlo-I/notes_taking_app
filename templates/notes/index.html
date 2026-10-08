@@ -15,15 +15,16 @@
                 <div class="card">
                     <div class="card-header">
                         <div>
-                            <span class="badge">{{ note[1] }}</span>
-                            <span class="meta">{{ note[4].strftime('%Y-%m-%d %H:%M') if note[4] else '' }}</span>
+                            <span class="badge">{{ note.type }}</span>
+                            <span class="meta">{{ note.created_at.strftime('%Y-%m-%d %H:%M') if note.created_at else '' }}</span>
                         </div>
                     </div>
+                    <!-- Uses dictionary keys, preserves whitespace, and renders HTML safely -->
                     <p class="card-excerpt">
-                        {{ note[2][:200] }}{% if note[2]|length > 200 %}...{% endif %}
+                        {{ note.content | safe }}
                     </p>
                     <div class="card-actions">
-                        <button onclick="loadNoteDetails('{{ note[0] }}')" class="icon-btn" aria-label="View details" title="View details">
+                        <button onclick="loadNoteDetails('{{ note.id }}')" class="icon-btn" aria-label="View details" title="View details">
                             <i data-lucide="summary"></i>
                         </button>
                     </div>
