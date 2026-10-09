@@ -384,3 +384,30 @@ def approve(note_id):
         extract_and_save_topics(session["user_id"], note_id, row[0]) 
 
     return redirect(url_for("notes.index"))
+
+
+@review_bp.route("/<uuid:note_id>/review/save-draft", methods=["POST"])
+@require_login
+def save_draft(note_id):
+    """
+    Saves the edited content but keeps the note in 'under_review' status.
+    The critique session remains OPEN so the user can continue later.
+    No embedding or integration happens here—that only occurs on approval.
+    """
+    edited_content = request.form.get("content", "").strip()
+    if not edited_content:
+        abort(400)
+
+    with get_user_scoped_connection(session["user_id"]) as conn:
+        with conn.cursor() as cur:
+            # Just update the content, keep status as 'under_review'
+            cur.execute(
+                "UPDATE notes SET content = %s WHERE id = %s",
+                (edited_content, str(note_id)),
+            )
+            # Note: We do NOT resolve the critique session here.
+            # It remains open for future replies.
+        conn.commit()
+
+    # Redirect to the main notes page so the user can see their draft
+    return redirect(url_for("notes.index"))

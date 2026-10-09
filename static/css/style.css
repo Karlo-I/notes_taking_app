@@ -18,6 +18,9 @@
     
     --danger: #f85149;
     --danger-hover: #ff7b72;
+
+    --success: #2ea043; 
+    --success-hover: #3fb950;
     
     /* Neon Sidebar Dimensions */
     --sidebar-width: 260px;
@@ -270,6 +273,12 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     color: var(--danger);
 }
 
+/* Save Button Hover - Green for "Approve/Finalize" */
+.icon-btn-save:hover {
+    background: rgba(46, 160, 67, 0.1); /* Faint green background */
+    color: var(--success);
+}
+
 /* Cards */
 .card {
     background: var(--bg-card);
@@ -438,7 +447,7 @@ input[type="text"]:focus, textarea:focus, select:focus, .form-control:focus {
 .review-note-textarea { background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; font-size: 15px; line-height: 1.6; resize: vertical; width: 100%; min-height: 120px; font-family: inherit; transition: all 0.2s; color: var(--text-primary); }
 .review-note-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
 .review-note-textarea:disabled { background: var(--bg-card); color: var(--text-secondary); cursor: default; }
-.review-actions { display: flex; gap: 8px; margin-top: 16px; align-items: center;}
+.review-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; align-items: center;}
 .review-helper-text { font-size: 13px; color: var(--text-secondary); margin-top: 16px; line-height: 1.5; }
 
 /* Dialogue */
