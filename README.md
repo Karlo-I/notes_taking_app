@@ -4,10 +4,11 @@
 
 **AI assistance disclosure:** This document and the planning behind it were developed in conversation with Claude (Anthropic) and Qwen. All architectural decisions, trade-off calls, and scope choices are the author's own, made deliberately across a design conversation — not defaults accepted from the AI.
 
-**Last updated:** September 24, 2026
 
 [![Architecture diagram of karlo-i/notes_taking_app](https://gitdiagram.com/karlo-i/notes_taking_app/diagram.png)](https://gitdiagram.com/karlo-i/notes_taking_app?utm_source=readme&utm_medium=picture)
 
+
+**Last updated:** September 24, 2026
 ---
 
 ## 1. Thesis
