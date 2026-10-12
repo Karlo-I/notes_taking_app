@@ -6,6 +6,8 @@
 
 **Last updated:** September 24, 2026
 
+[![Architecture diagram of karlo-i/notes_taking_app](https://gitdiagram.com/karlo-i/notes_taking_app/diagram.png)](https://gitdiagram.com/karlo-i/notes_taking_app?utm_source=readme&utm_medium=picture)
+
 ---
 
 ## 1. Thesis
