@@ -7,96 +7,75 @@ _pool = pg_pool.SimpleConnectionPool(1, 20, dsn=os.environ["DATABASE_URL"])
 
 @contextmanager
 def get_user_scoped_connection(user_id):
-    conn = _pool.getconn()
-    is_retry = False
-    
-    try:
-        # Set the user context for Row Level Security
-        with conn.cursor() as cur:
-            cur.execute("SET LOCAL app.current_user_id = %s", (str(user_id),))
-        yield conn
-        
-    except psycopg2.OperationalError:
-        if not is_retry:
-            # 1. The connection is dead (e.g., Render/Neon idle timeout). Discard it.
-            try:
-                _pool.putconn(conn, close=True)
-            except Exception:
-                pass
-            
-            # 2. Get a brand new connection and try exactly one more time
-            conn = _pool.getconn()
-            is_retry = True
+    retries = 0
+    while True:
+        conn = _pool.getconn()
+        try:
+            # Set the user context for Row Level Security
             with conn.cursor() as cur:
                 cur.execute("SET LOCAL app.current_user_id = %s", (str(user_id),))
             yield conn
-        else:
-            # If it fails twice, the database is actually down. Let it crash.
+            return # Exit generator on success
+            
+        except psycopg2.OperationalError:
+            # Connection died (e.g., Render idle timeout)
+            if retries >= 1:
+                try: _pool.putconn(conn, close=True)
+                except Exception: pass
+                raise # Fail if it dies twice
+                
+            retries += 1
+            try: _pool.putconn(conn, close=True) # Discard dead connection
+            except Exception: pass
+            continue # Loop to get a fresh connection
+            
+        except Exception:
+            # For other errors (like SQL syntax), rollback normally
+            try: conn.rollback()
+            except psycopg2.InterfaceError:
+                try: _pool.putconn(conn, close=True)
+                except Exception: pass
             raise
             
-    except Exception:
-        # For other errors (like SQL syntax), try to rollback normally
-        try:
-            conn.rollback()
-        except psycopg2.InterfaceError:
-            # If rollback fails because the connection is dead, discard it
-            try:
-                _pool.putconn(conn, close=True)
-            except Exception:
-                pass
-            conn = None # Prevent the finally block from returning a dead connection
-        raise
-        
-    finally:
-        # Only return the connection to the pool if it's still alive
-        if conn and conn.closed == 0:
-            _pool.putconn(conn)
+        finally:
+            # Only return to pool if we are exiting the generator (success or final failure)
+            # If we are continuing the loop, conn.closed is already 1 from putconn(close=True) above.
+            if conn and conn.closed == 0:
+                _pool.putconn(conn)
 
 
 @contextmanager
 def get_unscoped_connection():
-    """Added retry logic to match get_user_scoped_connection and prevent OAuth crashes."""
-    conn = _pool.getconn()
-    is_retry = False
-    
-    try:
-        yield conn
-        conn.commit()
-        
-    except psycopg2.OperationalError:
-        if not is_retry:
-            # 1. The connection is dead (e.g., Render/Neon idle timeout). Discard it.
-            try:
-                _pool.putconn(conn, close=True)
-            except Exception:
-                pass
-            
-            # 2. Get a brand new connection and try exactly one more time
-            conn = _pool.getconn()
-            is_retry = True
+    retries = 0
+    while True:
+        conn = _pool.getconn()
+        try:
             yield conn
             conn.commit()
-        else:
-            # If it fails twice, the database is actually down. Let it crash.
+            return # Exit generator on success
+            
+        except psycopg2.OperationalError:
+            # Connection died
+            if retries >= 1:
+                try: _pool.putconn(conn, close=True)
+                except Exception: pass
+                raise 
+                
+            retries += 1
+            try: _pool.putconn(conn, close=True)
+            except Exception: pass
+            continue 
+            
+        except Exception:
+            try: conn.rollback()
+            except psycopg2.InterfaceError:
+                try: _pool.putconn(conn, close=True)
+                except Exception: pass
             raise
             
-    except Exception:
-        # For other errors, try to rollback normally
-        try:
-            conn.rollback()
-        except psycopg2.InterfaceError:
-            # If rollback fails because the connection is dead, discard it
-            try:
-                _pool.putconn(conn, close=True)
-            except Exception:
-                pass
-            conn = None # Prevent the finally block from returning a dead connection
-        raise
-        
-    finally:
-        # Only return the connection to the pool if it's still alive
-        if conn and conn.closed == 0:
-            _pool.putconn(conn)
+        finally:
+            if conn and conn.closed == 0:
+                _pool.putconn(conn)
 
 
 def vector_literal(embedding):
