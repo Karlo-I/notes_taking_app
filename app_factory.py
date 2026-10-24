@@ -92,6 +92,11 @@ def create_app():
         from admin import admin_bp
         app.register_blueprint(admin_bp)
 
+    @app.route("/health")
+    @limiter.exempt  # Exempt from rate limiting
+    def health_check():
+        return "OK", 200
+    
     @app.route("/")
     def index():
         if "user_id" in session:
