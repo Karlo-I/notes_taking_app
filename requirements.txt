@@ -81,3 +81,6 @@ wrapt==2.4.0
 yarl==1.24.5
 zipp==4.1.0
 zopfli==0.4.3
+openai-whisper
+yt-dlp
+torch

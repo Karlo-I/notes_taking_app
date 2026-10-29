@@ -58,6 +58,12 @@
                 <i data-lucide="check-square"></i>
                 <span class="nav-text">To-Dos</span>
             </a>
+
+            <a href="{{ url_for('transcribe.index') }}" class="nav-item {{ 'active' if request.endpoint == 'transcribe.index' }}" data-tooltip="Convert">
+                <i data-lucide="file-audio"></i>
+                <span class="nav-text">Convert</span>
+            </a>
+
         </nav>
     
         <div class="sidebar-footer">

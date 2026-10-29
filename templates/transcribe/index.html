@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Convert Audio{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Convert Audio</h1>
+        <p class="page-helper-text">Convert audio files or videos directly into text. 100% private processing. Click trash can to delete a converted item from Notes</p>
+    </div>
+</div>
+
+<!-- Recent Transcriptions History -->
+<div id="history-container" class="card" style="max-width: 600px; margin: 0 auto 20px auto; display: none; padding: 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border);">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Recent Conversions
+        </span>
+        <!-- FIX: Added margin-left: auto to push it away from the title -->
+        <button onclick="clearHistory()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 11px; text-decoration: underline; padding: 0; margin-left: auto;">Clear</button>
+    </div>
+    <div id="history-list" style="padding: 0 20px;"></div>
+</div>
+
+<!-- Main Form Card -->
+<div class="card" style="max-width: 600px; margin: 0 auto 48px auto;">
+    <form method="POST" enctype="multipart/form-data" id="transcribeForm">
+        
+        <div style="margin-bottom: 14px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px;">1. Upload Audio/Video File</label>            
+            <div style="position: relative;">
+                <input type="file" id="audio_file" name="audio_file" accept="audio/*,video/*" style="display: none;" onchange="updateFileName(this)">
+                <label for="audio_file" class="btn btn-secondary" style="width: 100%; text-align: center; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px;">
+                    <i data-lucide="upload-cloud" style="width: 16px; height: 16px;"></i>
+                    <span id="file-label-text" style="font-size: 14px;">Choose Audio/Video File</span>
+                </label>
+            </div>
+            <p class="hint" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Supports .mp3, .wav, .m4a, .mp4, etc.</p>
+        </div>
+
+        <div class="divider" style="text-align: center; margin: 14px 0; color: var(--text-secondary); font-weight: bold; font-size: 12px;">— OR —</div>
+
+        <div style="margin-bottom: 14px;">
+            <label for="youtube_url" style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px;">2. Paste YouTube / Video URL</label>
+            <input type="url" id="youtube_url" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..." class="form-control" style="padding: 10px; font-size: 14px;">
+        </div>
+
+        <div style="margin-top: 18px;">
+            <button type="submit" id="submitBtn" class="btn" style="width: 100%; padding: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <i data-lucide="file-audio" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i>
+                Start Conversion
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Toast Notification for Delete Success -->
+<div id="delete-toast" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--bg-card); color: var(--text-primary); padding: 12px 24px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 1000;">
+    <i data-lucide="check-circle" style="width: 16px; height: 16px; color: var(--success);"></i>
+    <span>Note removed from database</span>
+</div>
+
+<script>
+    const fileInput = document.getElementById('audio_file');
+    const urlInput = document.getElementById('youtube_url');
+    const form = document.getElementById('transcribeForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function updateFileName(input) {
+        const label = document.getElementById('file-label-text');
+        if (input.files && input.files.length > 0) {
+            label.innerText = input.files[0].name;
+            input.nextElementSibling.style.borderColor = 'var(--success)';
+            input.nextElementSibling.style.color = 'var(--success)';
+        } else {
+            label.innerText = 'Choose Audio/Video File';
+            input.nextElementSibling.style.borderColor = '';
+            input.nextElementSibling.style.color = '';
+        }
+    }
+
+    fileInput.addEventListener('input', () => { if(fileInput.value) { urlInput.value = ''; urlInput.disabled = true; } else { urlInput.disabled = false; } });
+    urlInput.addEventListener('input', () => { if(urlInput.value) { fileInput.value = ''; fileInput.disabled = true; } else { fileInput.disabled = false; } });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault(); 
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader" class="animate-spin" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i> Processing...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch('/transcribe/process', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                form.reset();
+                urlInput.disabled = false;
+                fileInput.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="file-audio" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i> Start Conversion';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+
+                const historyContainer = document.getElementById('history-container');
+                const historyList = document.getElementById('history-list');
+                historyContainer.style.display = 'block';
+
+                const historyItem = document.createElement('div');
+                historyItem.style.cssText = "display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);";
+                
+                const noteId = data.note_id || 'unknown';
+                const sourceName = data.source_name || 'Transcript';
+                const timestamp = data.timestamp || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const downloadUrl = data.download_url || '#';
+                const notesUrl = data.notes_url || '/notes/';
+                
+                historyItem.id = `note-row-${noteId}`;
+                
+                let actionsHtml = `<div style="display: flex; gap: 12px; align-items: center;">`;
+                
+                if (data.download_url) {
+                    actionsHtml += `
+                        <a href="${downloadUrl}" download style="color: var(--text-secondary); text-decoration: none; font-size: 12px; display: flex; align-items: center; gap: 4px;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
+                            <i data-lucide="download" style="width: 12px; height: 12px;"></i> Download
+                        </a>`;
+                }
+                
+                if (data.notes_url && noteId !== 'unknown') {
+                    actionsHtml += `
+                        <a href="${notesUrl}" style="color: var(--text-secondary); text-decoration: none; font-size: 12px; display: flex; align-items: center; gap: 4px;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
+                            <i data-lucide="list" style="width: 12px; height: 12px;"></i> Notes
+                        </a>
+                        <!-- FIX: Added single quotes around '${noteId}' so JS treats the UUID as a string -->
+                        <button onclick="deleteNote('${noteId}')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0; display: flex; align-items: center;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-secondary)'">
+                            <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                        </button>`;
+                }
+                
+                actionsHtml += '</div>';
+
+                historyItem.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; margin-right: 16px;">
+                        <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--success); flex-shrink: 0;"></i>
+                        <div style="display: flex; flex-direction: column; min-width: 0;">
+                            <span style="font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sourceName}</span>
+                            <span style="font-size: 11px; color: var(--text-secondary);">${timestamp}</span>
+                        </div>
+                    </div>
+                    ${actionsHtml}
+                `;
+
+                historyList.prepend(historyItem);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                historyContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            } else {
+                alert("Error: " + data.error);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="file-audio" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i> Start Conversion';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        } catch (error) {
+            console.error("Network error:", error);
+            alert("Network error: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i data-lucide="file-audio" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i> Start Conversion';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    });
+
+    async function deleteNote(noteId) {
+        if(!confirm("Remove this transcript from your Notes? (The downloaded file is safe)")) return;
+        
+        try {
+            const res = await fetch(`/transcribe/delete_note/${noteId}`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.success) {
+                const row = document.getElementById(`note-row-${noteId}`);
+                if (row) {
+                    row.style.opacity = '0';
+                    row.style.transition = 'opacity 0.3s ease';
+                    setTimeout(() => {
+                        row.remove();
+                        
+                        // FIX: Check if list is now empty and hide the container
+                        const historyList = document.getElementById('history-list');
+                        const historyContainer = document.getElementById('history-container');
+                        if (historyList.children.length === 0) {
+                            historyContainer.style.display = 'none';
+                        }
+                    }, 300);
+                }
+                
+                const toast = document.getElementById('delete-toast');
+                toast.style.opacity = '1';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                }, 3000);
+                
+            } else {
+                alert("Error deleting note: " + data.error);
+            }
+        } catch (error) {
+            alert("Error deleting note: " + error.message);
+        }
+    }
+
+    function clearHistory() {
+        document.getElementById('history-list').innerHTML = '';
+        document.getElementById('history-container').style.display = 'none';
+    }
+
+</script>
+{% endblock %}

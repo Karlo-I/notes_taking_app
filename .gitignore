@@ -69,3 +69,7 @@ app.log
 # React stuff
 dashboard/node_modules/
 dashboard/dist/
+
+# Transcription stuff
+static/downloads/
+temp_uploads/

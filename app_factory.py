@@ -7,7 +7,6 @@ this security-sensitive shouldn't ride on Flask's own debug flag.
 import os
 import re
 from pathlib import Path
-
 from dotenv import load_dotenv
 from flask import Flask, redirect, request, session, url_for, render_template
 from extensions import limiter
@@ -86,6 +85,9 @@ def create_app():
     # Register Email/Password Auth Blueprint
     from email_auth import email_auth_bp
     app.register_blueprint(email_auth_bp)
+
+    from transcribe import transcribe_bp
+    app.register_blueprint(transcribe_bp)
 
     # Conditionally register hidden admin blueprint
     if os.environ.get("ADMIN_ENABLED") == "true":
