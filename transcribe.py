@@ -1,6 +1,5 @@
 import os
 import uuid
-import whisper
 import torch
 import yt_dlp
 from datetime import datetime
@@ -11,11 +10,24 @@ from decorators import require_login
 
 transcribe_bp = Blueprint("transcribe", __name__, url_prefix="/transcribe")
 
-# --- Force the M3 GPU (MPS) locally, fallback to CPU on Render ---
-device = "mps" if torch.backends.mps.is_available() else "cpu"
-print(f"Loading Whisper model on {device.upper()}...")
-model = whisper.load_model("base", device=device) 
-print("Model loaded! Ready to transcribe.")
+# --- LAZY LOADING: Prevents Render from crashing on startup ---
+_transcribe_model = None
+
+def get_transcription_model():
+    global _transcribe_model
+    if _transcribe_model is None:
+        import whisper
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
+        print(f"Loading Whisper model on {device.upper()}...")
+        
+        # Use 'tiny' on Render (CPU) to stay under the 512MB RAM limit.
+        # Use 'base' locally on your Mac (MPS) for better accuracy/speed.
+        model_size = "tiny" if device == "cpu" else "base"
+        print(f"Using '{model_size}' model to optimize memory.")
+        
+        _transcribe_model = whisper.load_model(model_size, device=device)
+        print("Model loaded! Ready to transcribe.")
+    return _transcribe_model
 
 UPLOAD_FOLDER = 'temp_uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -60,7 +72,6 @@ def process_transcription():
                 
         elif file and file.filename != '':
             print(f"Uploading file: {file.filename}")
-            # FIX: temp_filepath already includes UPLOAD_FOLDER, so just append the filename directly
             actual_audio_path = f"{temp_filepath}_{secure_filename(file.filename)}"
             file.save(actual_audio_path)
             print(f"Saved to: {actual_audio_path}")
@@ -69,8 +80,9 @@ def process_transcription():
             print("ERROR: No file or URL provided")
             return jsonify({"success": False, "error": "Please provide a URL or file."}), 400
 
-        # 2. Transcribe
+        # 2. Transcribe (LAZY LOADED)
         print("Starting transcription...")
+        model = get_transcription_model()
         result = model.transcribe(actual_audio_path, verbose=False) 
         print(f"Transcription complete. Segments: {len(result['segments'])}")
 
@@ -107,7 +119,6 @@ def process_transcription():
         print(f"Saving to database for user: {user_id}")
         
         try:
-            # CHANGE THIS LINE TO USE THE SCOPED CONNECTION
             with get_user_scoped_connection(user_id) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -158,7 +169,6 @@ def process_transcription():
 def delete_note(note_id):
     user_id = session["user_id"]
     try:
-        # CHANGE THIS LINE TOO
         with get_user_scoped_connection(user_id) as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM notes WHERE id = %s AND user_id = %s", (note_id, user_id))
