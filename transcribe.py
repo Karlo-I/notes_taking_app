@@ -45,7 +45,31 @@ def process_transcription():
     print("=== TRANSCRIPTION STARTED ===")
     
     youtube_url = request.form.get('youtube_url', '').strip()
+    
+    # --- FIX 1: Clean the URL to remove playlist parameters ---
+    if youtube_url and '&list=' in youtube_url:
+        youtube_url = youtube_url.split('&list=')[0]
+        print(f"Cleaned URL (removed playlist): {youtube_url}")
+    # ----------------------------------------------------------
+    
     file = request.files.get('audio_file')
+    
+    # --- FIX 2: File size check to prevent Render OOM crashes ---
+    if file and file.filename != '':
+        file.seek(0, 2)  # Seek to end of file
+        file_length = file.tell()
+        file.seek(0)     # Reset to beginning so it can be saved
+        
+        # Limit to 15MB on Render (512MB RAM limit)
+        max_file_size = 15 * 1024 * 1024  # 15MB
+        
+        if file_length > max_file_size:
+            size_mb = file_length // 1024 // 1024
+            return jsonify({
+                "success": False, 
+                "error": f"File too large for cloud processing ({size_mb}MB). Please use files under 15MB or run locally."
+            }), 400
+    # -------------------------------------------------------------
     
     temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}")
     actual_audio_path = None
