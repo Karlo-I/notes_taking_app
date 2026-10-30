@@ -173,11 +173,22 @@ def process_transcription():
         return jsonify(response_data)
 
     except Exception as e:
-        error_msg = f"Transcription error: {str(e)}"
-        print(error_msg)
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": error_msg}), 500
+        error_msg = str(e)
+        
+        # Check if the error is the known Instagram/YouTube datacenter block
+        if "403: Forbidden" in error_msg or "Failed to extract any player response" in error_msg:
+            friendly_error = (
+                "Cloud servers are currently blocked by this platform (Instagram/YouTube). "
+                "Please either: 1) Upload the MP3 file directly, or 2) Use the local desktop app for URL downloads."
+            )
+            print(f"BLOCKED BY PLATFORM: {friendly_error}")
+            return jsonify({"success": False, "error": friendly_error}), 400
+        else:
+            # For any other error, show the standard message
+            print(f"Transcription error: {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"success": False, "error": f"Transcription error: {error_msg}"}), 500
     
     finally:
         if actual_audio_path and os.path.exists(actual_audio_path):
